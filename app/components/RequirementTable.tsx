@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Requirement } from "./types";
 import Icon from "./Icon";
 
@@ -9,6 +10,11 @@ interface RequirementTableProps {
   onStatusChange: (code: string, newStatus: Requirement["status"]) => void;
   onEditClick: (req: Requirement) => void;
   onDeleteClick: (code: string) => void;
+  currentPage: number;
+  totalCount: number;
+  limit: number;
+  filterType: string;
+  sortBy: string;
 }
 
 export default function RequirementTable({
@@ -16,33 +22,32 @@ export default function RequirementTable({
   onStatusChange,
   onEditClick,
   onDeleteClick,
+  currentPage,
+  totalCount,
+  limit,
+  filterType,
+  sortBy,
 }: RequirementTableProps) {
-  const [filterType, setFilterType] = useState<string>("All");
-  const [sortBy, setSortBy] = useState<string>("newest");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  // Filtering logic
-  const filteredReqs = requirements.filter((req) => {
-    if (filterType === "All") return true;
-    return req.type.toLowerCase() === filterType.toLowerCase();
-  });
-
-  // Sorting logic
-  const sortedReqs = [...filteredReqs].sort((a, b) => {
-    if (sortBy === "newest") {
-      return new Date(b.requestDate).getTime() - new Date(a.requestDate).getTime();
+  // Helper to update URL params
+  const updateParams = (newParams: Record<string, string | number | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(newParams).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === "") {
+        params.delete(key);
+      } else {
+        params.set(key, String(value));
+      }
+    });
+    // Reset page to 1 when changing filters or sorting
+    if (!("page" in newParams)) {
+      params.delete("page");
     }
-    if (sortBy === "oldest") {
-      return new Date(a.requestDate).getTime() - new Date(b.requestDate).getTime();
-    }
-    if (sortBy === "priority") {
-      const priorityWeight = { HIGH: 3, MEDIUM: 2, LOW: 1 };
-      return priorityWeight[b.priority] - priorityWeight[a.priority];
-    }
-    if (sortBy === "status") {
-      return a.status.localeCompare(b.status);
-    }
-    return 0;
-  });
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   // Get icon for type
   const getTypeIcon = (type: Requirement["type"]) => {
@@ -96,7 +101,7 @@ export default function RequirementTable({
 
   const handleExportCSV = () => {
     const headers = "Código,Tipo,Módulo,Solicitante,Fecha,Descripción,Prioridad,Estado\n";
-    const rows = sortedReqs
+    const rows = requirements
       .map(
         (r) =>
           `"${r.code}","${r.type}","${r.module}","${r.requestor}","${r.requestDate}","${r.description.replace(
@@ -109,12 +114,18 @@ export default function RequirementTable({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `requerimientos_assa_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute("download", `requerimientos_assa_${new Date().toISOString().slice(0, 10)}.csv`);
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
+
+  const totalPages = Math.ceil(totalCount / limit) || 1;
+
+  // Calculate items range shown
+  const startItem = totalCount === 0 ? 0 : (currentPage - 1) * limit + 1;
+  const endItem = Math.min(currentPage * limit, totalCount);
 
   return (
     <div className="w-full">
@@ -128,9 +139,9 @@ export default function RequirementTable({
           {["All", "Staff", "Machine", "Service"].map((type) => (
             <button
               key={type}
-              onClick={() => setFilterType(type)}
+              onClick={() => updateParams({ type })}
               className={`px-3 py-1 text-xs font-bold rounded-full border transition-all cursor-pointer ${
-                (type === "All" && filterType === "All") || filterType === type
+                type === filterType
                   ? "bg-mosque text-clear-day border-mosque shadow-sm"
                   : "bg-white text-nordic/70 border-nordic/10 hover:bg-clear-day"
               }`}
@@ -148,7 +159,7 @@ export default function RequirementTable({
             </span>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+              onChange={(e) => updateParams({ sort: e.target.value })}
               className="bg-white border border-nordic/10 text-xs font-bold text-nordic py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-mosque/40 transition-all"
             >
               <option value="newest">Fecha: Recientes</option>
@@ -202,14 +213,14 @@ export default function RequirementTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-nordic/5">
-              {sortedReqs.length === 0 ? (
+              {requirements.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-nordic/50 font-semibold">
                     No se encontraron requerimientos.
                   </td>
                 </tr>
               ) : (
-                sortedReqs.map((req) => (
+                requirements.map((req) => (
                   <tr
                     key={req.code}
                     className="hover:bg-clear-day/30 transition-colors group relative"
@@ -338,12 +349,12 @@ export default function RequirementTable({
 
         {/* Mobile Cards View */}
         <div className="block md:hidden divide-y divide-nordic/5">
-          {sortedReqs.length === 0 ? (
+          {requirements.length === 0 ? (
             <div className="px-6 py-8 text-center text-nordic/50 font-semibold text-sm">
               No se encontraron requerimientos.
             </div>
           ) : (
-            sortedReqs.map((req) => (
+            requirements.map((req) => (
               <div key={req.code} className="p-4 space-y-3 bg-white">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs font-bold text-nordic/85">
@@ -393,16 +404,34 @@ export default function RequirementTable({
         {/* Table Footer / Pagination Info */}
         <div className="bg-clear-day px-6 py-4 flex items-center justify-between border-t border-nordic/10 text-xs text-nordic/60 font-semibold">
           <span>
-            Mostrando {sortedReqs.length} de {requirements.length} registros
+            Mostrando {startItem} a {endItem} de {totalCount} registros
           </span>
           <div className="flex gap-1.5">
-            <button className="p-1 border border-nordic/15 rounded bg-white hover:bg-clear-day transition-colors cursor-pointer text-nordic/50 hover:text-nordic outline-none flex items-center justify-center">
+            <button
+              disabled={currentPage <= 1}
+              onClick={() => updateParams({ page: currentPage - 1 })}
+              className="p-1 border border-nordic/15 rounded bg-white hover:bg-clear-day transition-colors cursor-pointer text-nordic/50 hover:text-nordic outline-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+            >
               <Icon name="chevron_left" className="h-4 w-4" />
             </button>
-            <button className="px-2.5 py-1 border border-nordic/15 rounded bg-mosque text-clear-day font-bold text-[11px] outline-none">
-              1
-            </button>
-            <button className="p-1 border border-nordic/15 rounded bg-white hover:bg-clear-day transition-colors cursor-pointer text-nordic/50 hover:text-nordic outline-none flex items-center justify-center">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                onClick={() => updateParams({ page: p })}
+                className={`px-2.5 py-1 border rounded font-bold text-[11px] outline-none cursor-pointer transition-colors ${
+                  p === currentPage
+                    ? "bg-mosque text-clear-day border-mosque"
+                    : "bg-white border-nordic/15 text-nordic/70 hover:bg-clear-day"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              disabled={currentPage >= totalPages}
+              onClick={() => updateParams({ page: currentPage + 1 })}
+              className="p-1 border border-nordic/15 rounded bg-white hover:bg-clear-day transition-colors cursor-pointer text-nordic/50 hover:text-nordic outline-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+            >
               <Icon name="chevron_right" className="h-4 w-4" />
             </button>
           </div>

@@ -1,21 +1,56 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Icon from "./Icon";
 
 interface TopBarProps {
   onMenuToggle: () => void;
   onAddClick: () => void;
   searchQuery: string;
-  setSearchQuery: (query: string) => void;
 }
 
 export default function TopBar({
   onMenuToggle,
   onAddClick,
   searchQuery,
-  setSearchQuery,
 }: TopBarProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [localSearch, setLocalSearch] = useState(searchQuery);
+
+  // Sync local search state with prop when it changes (e.g. cleared externally)
+  useEffect(() => {
+    setLocalSearch(searchQuery);
+  }, [searchQuery]);
+
+  // Debounced URL update
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      if (localSearch !== searchQuery) {
+        const params = new URLSearchParams(searchParams.toString());
+        if (localSearch.trim()) {
+          params.set("search", localSearch.trim());
+        } else {
+          params.delete("search");
+        }
+        params.delete("page"); // Reset page to 1 on new search
+        router.push(`${pathname}?${params.toString()}`);
+      }
+    }, 350);
+
+    return () => clearTimeout(delayDebounce);
+  }, [localSearch, searchQuery, router, pathname, searchParams]);
+
+  const handleClear = () => {
+    setLocalSearch("");
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("search");
+    params.delete("page");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
   return (
     <header className="flex justify-between items-center h-16 ml-0 md:ml-64 px-4 md:px-8 sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-nordic/10 transition-all duration-300">
       {/* Left side: Hamburger & Title */}
@@ -41,17 +76,17 @@ export default function TopBar({
           <input
             type="text"
             placeholder="Buscar requerimientos..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
             className="bg-clear-day border border-nordic/10 px-4 py-1.5 pl-10 rounded-lg text-xs md:text-sm text-nordic focus:ring-2 focus:ring-mosque/40 outline-none w-48 md:w-64 transition-all placeholder:text-nordic/40 font-semibold"
           />
           <Icon
             name="search"
             className="absolute left-3 top-1/2 -translate-y-1/2 text-nordic/50 h-4 w-4"
           />
-          {searchQuery && (
+          {localSearch && (
             <button
-              onClick={() => setSearchQuery("")}
+              onClick={handleClear}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-nordic/50 hover:text-nordic cursor-pointer outline-none"
             >
               <Icon name="close" className="h-4 w-4" />
