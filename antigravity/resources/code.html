@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Resource Requirements | BuildOps Pro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-high": "#dce9ff",
+                    "surface-container-highest": "#d3e4fe",
+                    "on-primary-fixed-variant": "#3f465c",
+                    "on-tertiary-fixed-variant": "#3a485c",
+                    "primary-container": "#131b2e",
+                    "background": "#f8f9ff",
+                    "secondary": "#9d4300",
+                    "inverse-surface": "#213145",
+                    "surface-container": "#e5eeff",
+                    "surface-container-low": "#eff4ff",
+                    "on-tertiary": "#ffffff",
+                    "secondary-fixed": "#ffdbca",
+                    "on-background": "#0b1c30",
+                    "on-secondary-fixed-variant": "#783200",
+                    "surface-tint": "#565e74",
+                    "on-surface-variant": "#45464d",
+                    "on-surface": "#0b1c30",
+                    "primary-fixed": "#dae2fd",
+                    "surface-bright": "#f8f9ff",
+                    "on-primary": "#ffffff",
+                    "surface-dim": "#cbdbf5",
+                    "on-primary-container": "#7c839b",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed-dim": "#b9c7e0",
+                    "inverse-on-surface": "#eaf1ff",
+                    "outline": "#76777d",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-container": "#76859b",
+                    "tertiary-container": "#0d1c2f",
+                    "on-error": "#ffffff",
+                    "on-tertiary-fixed": "#0d1c2f",
+                    "on-secondary-container": "#5c2400",
+                    "surface-variant": "#d3e4fe",
+                    "error-container": "#ffdad6",
+                    "secondary-fixed-dim": "#ffb690",
+                    "on-secondary-fixed": "#341100",
+                    "tertiary-fixed": "#d5e3fd",
+                    "error": "#ba1a1a",
+                    "outline-variant": "#c6c6cd",
+                    "on-primary-fixed": "#131b2e",
+                    "primary-fixed-dim": "#bec6e0",
+                    "surface": "#f8f9ff",
+                    "primary": "#000000",
+                    "inverse-primary": "#bec6e0",
+                    "on-secondary": "#ffffff",
+                    "secondary-container": "#fd761a",
+                    "tertiary": "#000000"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "margin-mobile": "16px",
+                    "gutter": "16px",
+                    "unit": "4px",
+                    "margin-desktop": "32px",
+                    "container-max": "1440px"
+            },
+            "fontFamily": {
+                    "label-caps": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "display-lg-mobile": ["Inter"],
+                    "data-mono": ["JetBrains Mono"],
+                    "title-sm": ["Inter"],
+                    "headline-md": ["Inter"]
+            },
+            "fontSize": {
+                    "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "display-lg-mobile": ["28px", {"lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "data-mono": ["13px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "title-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .sidebar-active {
+            opacity: 0.8;
+            transition: all 0.15s ease;
+        }
+        /* Custom Table Scrollbar for Industrial Feel */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+    </style>
+</head>
+<body class="bg-background font-body-md text-on-background min-h-screen">
+<!-- SideNavBar (Persistent) -->
+<aside class="w-60 h-screen fixed left-0 top-0 border-r border-outline-variant bg-surface flex flex-col py-6 z-50">
+<div class="px-6 mb-10">
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">BuildOps Pro</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Site Management System</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center px-6 py-3 font-body-md text-body-md text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">dashboard</span>
+<span>Dashboard</span>
+</a>
+<!-- Active State: Resource Requirements -->
+<a class="flex items-center px-6 py-3 font-body-md text-body-md text-secondary font-bold border-r-4 border-secondary bg-surface-container-low" href="#">
+<span class="material-symbols-outlined mr-3">assignment_late</span>
+<span>Resource Requirements</span>
+</a>
+<a class="flex items-center px-6 py-3 font-body-md text-body-md text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">inventory_2</span>
+<span>Inventory Control</span>
+</a>
+<a class="flex items-center px-6 py-3 font-body-md text-body-md text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">construction</span>
+<span>Construction Progress</span>
+</a>
+</nav>
+<div class="mt-auto px-6 space-y-1 border-t border-outline-variant pt-6">
+<a class="flex items-center py-2 font-body-md text-body-md text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">settings</span>
+<span>Settings</span>
+</a>
+<a class="flex items-center py-2 font-body-md text-body-md text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">help</span>
+<span>Support</span>
+</a>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="flex justify-between items-center h-16 ml-60 px-margin-desktop sticky top-0 z-40 bg-surface-container-lowest border-b border-outline-variant">
+<div class="flex items-center gap-4">
+<h2 class="font-title-sm text-title-sm text-on-surface">Westside Terminal Expansion</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative hidden lg:block">
+<input class="bg-surface-container-low border border-outline-variant px-4 py-1.5 pl-10 rounded-lg text-body-sm focus:ring-2 focus:ring-secondary-container outline-none w-64 transition-all" placeholder="Search resources..." type="text"/>
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+</div>
+<button class="bg-secondary-container text-on-secondary-container px-4 py-2 font-body-md font-bold rounded shadow-sm hover:opacity-90 transition-all flex items-center gap-2 active:scale-95" onclick="openModal()">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                Add Requirement
+            </button>
+<div class="flex items-center gap-4 border-l border-outline-variant pl-6">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-secondary transition-colors">notifications</button>
+<div class="h-8 w-8 rounded-full bg-surface-container-high overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="Professional project manager profile portrait, corporate photography style, high-end site office background with architectural blueprints, neutral lighting, professional work attire." src="https://lh3.googleusercontent.com/aida-public/AB6AXuArvG07G3ku57AHkN_4iGoyQ0-WjT7OgoGy_ayQ9BQDiQhCAwcZeZxeamjPc3v_9lYGrYGKF63ybvim4Cye18sUyChfCTrZvYyynaBU6Zd7v9i2RvOnAfbjzfobPZ4YvwSp-ajVvLivBSzcQ0FFm7dJNBq5DsWRZO7KMyVADmXutWpABntYPmaR0jnK4lDuujF-IMPxZQl-8juO8fp0pzbmYMoq7EUZmPN9s8Euf6Eo2O1BnCDySI_3kLmuKlfmHixksAE2WJqmhU9Z"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="ml-60 p-margin-desktop">
+<div class="max-w-container-max mx-auto">
+<!-- Page Header & Stats -->
+<div class="flex justify-between items-end mb-8">
+<div>
+<h1 class="font-display-lg text-display-lg text-on-surface">Resource Requirements</h1>
+<p class="text-on-surface-variant mt-1">Track and manage site allocation requests across the project lifecycle.</p>
+</div>
+<div class="flex gap-4">
+<div class="bg-surface-container px-4 py-3 border border-outline-variant flex flex-col min-w-[120px]">
+<span class="font-label-caps text-label-caps text-on-surface-variant">TOTAL PENDING</span>
+<span class="font-headline-md text-headline-md text-secondary">24</span>
+</div>
+<div class="bg-surface-container px-4 py-3 border border-outline-variant flex flex-col min-w-[120px]">
+<span class="font-label-caps text-label-caps text-on-surface-variant">APPROVED (WTD)</span>
+<span class="font-headline-md text-headline-md text-on-surface">142</span>
+</div>
+</div>
+</div>
+<!-- Filters Bar -->
+<div class="flex flex-wrap items-center gap-4 mb-6 bg-surface-container-low p-4 border border-outline-variant">
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant">FILTER BY TYPE:</span>
+<button class="bg-primary text-on-primary px-3 py-1 text-body-sm font-semibold rounded-full">All</button>
+<button class="hover:bg-surface-container-high px-3 py-1 text-body-sm font-semibold rounded-full transition-colors border border-outline-variant">Staff</button>
+<button class="hover:bg-surface-container-high px-3 py-1 text-body-sm font-semibold rounded-full transition-colors border border-outline-variant">Machine</button>
+<button class="hover:bg-surface-container-high px-3 py-1 text-body-sm font-semibold rounded-full transition-colors border border-outline-variant">Service</button>
+</div>
+<div class="ml-auto flex items-center gap-4">
+<select class="bg-surface border border-outline-variant text-body-sm py-1 pl-3 pr-8 rounded focus:ring-secondary focus:border-secondary transition-all">
+<option>Sort by: Newest</option>
+<option>Sort by: Oldest</option>
+<option>Sort by: Status</option>
+</select>
+<button class="flex items-center gap-1 text-body-sm font-semibold text-secondary hover:underline">
+<span class="material-symbols-outlined text-[18px]">download</span>
+                        Export CSV
+                    </button>
+</div>
+</div>
+<!-- Data Table Container -->
+<div class="bg-surface border border-outline-variant overflow-hidden shadow-sm">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-high border-b border-outline-variant">
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">CODE</th>
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">TYPE</th>
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">REQUEST DATE</th>
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">DESCRIPTION</th>
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant text-center">STATUS</th>
+<th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant text-right">ATTACHMENT</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="px-6 py-4 font-data-mono text-data-mono">RR-2401-001</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-tertiary-fixed-variant">person</span>
+<span>Staff</span>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface-variant">Oct 24, 2023</td>
+<td class="px-6 py-4 font-semibold">Concrete Finishing Crew (x4)</td>
+<td class="px-6 py-4">
+<div class="flex justify-center">
+<span class="bg-surface-container-high border border-outline-variant text-on-primary-fixed-variant px-2.5 py-0.5 rounded text-[12px] font-bold">PENDING</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<a class="text-secondary hover:text-on-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">description</span>
+</a>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="px-6 py-4 font-data-mono text-data-mono">RR-2401-002</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-tertiary-fixed-variant">precision_manufacturing</span>
+<span>Machine</span>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface-variant">Oct 24, 2023</td>
+<td class="px-6 py-4 font-semibold">Caterpillar 320 Excavator</td>
+<td class="px-6 py-4">
+<div class="flex justify-center">
+<span class="bg-surface-container-highest border border-blue-200 text-blue-900 px-2.5 py-0.5 rounded text-[12px] font-bold">APPROVED</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<a class="text-secondary hover:text-on-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">description</span>
+</a>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="px-6 py-4 font-data-mono text-data-mono">RR-2401-003</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-tertiary-fixed-variant">settings_suggest</span>
+<span>Service</span>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface-variant">Oct 23, 2023</td>
+<td class="px-6 py-4 font-semibold">Geo-technical Survey (Zone B)</td>
+<td class="px-6 py-4">
+<div class="flex justify-center">
+<span class="bg-surface-container-high border border-outline-variant text-on-primary-fixed-variant px-2.5 py-0.5 rounded text-[12px] font-bold">PENDING</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<a class="text-secondary hover:text-on-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">description</span>
+</a>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="px-6 py-4 font-data-mono text-data-mono">RR-2401-004</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-tertiary-fixed-variant">precision_manufacturing</span>
+<span>Machine</span>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface-variant">Oct 22, 2023</td>
+<td class="px-6 py-4 font-semibold">Potain Tower Crane MC 310</td>
+<td class="px-6 py-4">
+<div class="flex justify-center">
+<span class="bg-surface-container-highest border border-blue-200 text-blue-900 px-2.5 py-0.5 rounded text-[12px] font-bold">APPROVED</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<a class="text-secondary hover:text-on-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">description</span>
+</a>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-surface-container transition-colors group">
+<td class="px-6 py-4 font-data-mono text-data-mono">RR-2401-005</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-tertiary-fixed-variant">person</span>
+<span>Staff</span>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface-variant">Oct 22, 2023</td>
+<td class="px-6 py-4 font-semibold">Safety Inspector (Level 2)</td>
+<td class="px-6 py-4">
+<div class="flex justify-center">
+<span class="bg-surface-container-high border border-outline-variant text-on-primary-fixed-variant px-2.5 py-0.5 rounded text-[12px] font-bold">PENDING</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<a class="text-secondary hover:text-on-secondary-container transition-colors" href="#">
+<span class="material-symbols-outlined">description</span>
+</a>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="bg-surface-container-low px-6 py-3 flex items-center justify-between border-t border-outline-variant">
+<span class="text-body-sm text-on-surface-variant">Showing 1 to 5 of 24 entries</span>
+<div class="flex gap-1">
+<button class="p-1 border border-outline-variant hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-[18px]">chevron_left</span></button>
+<button class="px-3 py-1 border border-outline-variant bg-surface-container-highest font-bold text-body-sm">1</button>
+<button class="px-3 py-1 border border-outline-variant hover:bg-surface-container transition-colors text-body-sm">2</button>
+<button class="px-3 py-1 border border-outline-variant hover:bg-surface-container transition-colors text-body-sm">3</button>
+<button class="p-1 border border-outline-variant hover:bg-surface-container transition-colors"><span class="material-symbols-outlined text-[18px]">chevron_right</span></button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Modal Backdrop -->
+<div class="fixed inset-0 bg-on-background/40 backdrop-blur-sm z-[60] hidden flex items-center justify-center opacity-0 transition-opacity duration-300" id="modalOverlay">
+<!-- Add Requirement Form Modal -->
+<div class="bg-surface w-full max-w-lg border border-outline shadow-xl transform scale-95 transition-transform duration-300 overflow-hidden">
+<div class="bg-primary-container text-on-primary px-6 py-4 flex justify-between items-center">
+<h3 class="font-title-sm text-title-sm">Add New Resource Requirement</h3>
+<button class="material-symbols-outlined hover:bg-surface-container-high/20 rounded p-1" onclick="closeModal()">close</button>
+</div>
+<form class="p-6 space-y-5">
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-1.5">
+<label class="font-label-caps text-label-caps text-on-surface-variant">REQUIREMENT CODE</label>
+<input class="w-full bg-surface-container-low border border-outline-variant px-3 py-2 text-body-md font-data-mono outline-none focus:ring-2 focus:ring-secondary-container" type="text" value="RR-2401-025"/>
+</div>
+<div class="space-y-1.5">
+<label class="font-label-caps text-label-caps text-on-surface-variant">TYPE</label>
+<select class="w-full bg-surface-container-low border border-outline-variant px-3 py-2 text-body-md outline-none focus:ring-2 focus:ring-secondary-container">
+<option>Staff</option>
+<option>Machine</option>
+<option>Service</option>
+</select>
+</div>
+</div>
+<div class="space-y-1.5">
+<label class="font-label-caps text-label-caps text-on-surface-variant">REQUEST DATE</label>
+<input class="w-full bg-surface-container-low border border-outline-variant px-3 py-2 text-body-md outline-none focus:ring-2 focus:ring-secondary-container" type="date"/>
+</div>
+<div class="space-y-1.5">
+<label class="font-label-caps text-label-caps text-on-surface-variant">DESCRIPTION / SPECIFICATIONS</label>
+<textarea class="w-full bg-surface-container-low border border-outline-variant px-3 py-2 text-body-md outline-none focus:ring-2 focus:ring-secondary-container" placeholder="Detail the specific resource needs..." rows="3"></textarea>
+</div>
+<div class="space-y-1.5">
+<label class="font-label-caps text-label-caps text-on-surface-variant">PDF ATTACHMENT</label>
+<div class="border-2 border-dashed border-outline-variant bg-surface-container px-6 py-8 rounded flex flex-col items-center justify-center cursor-pointer hover:bg-surface-container-high transition-colors group">
+<span class="material-symbols-outlined text-outline group-hover:text-secondary text-[32px] mb-2">upload_file</span>
+<p class="text-body-sm font-semibold">Click to upload or drag and drop</p>
+<p class="text-[11px] text-on-surface-variant uppercase mt-1">PDF, DOCX up to 10MB</p>
+</div>
+</div>
+<div class="flex gap-3 pt-4 border-t border-outline-variant">
+<button class="flex-1 py-2 text-body-md font-bold text-on-surface hover:bg-surface-container transition-colors" onclick="closeModal()" type="button">CANCEL</button>
+<button class="flex-1 py-2 bg-secondary text-on-secondary font-bold text-body-md active:scale-95 transition-transform" type="submit">SUBMIT REQUIREMENT</button>
+</div>
+</form>
+</div>
+</div>
+<script>
+        function openModal() {
+            const overlay = document.getElementById('modalOverlay');
+            const modal = overlay.querySelector('div');
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            setTimeout(() => {
+                overlay.classList.add('opacity-100');
+                modal.classList.remove('scale-95');
+                modal.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            const overlay = document.getElementById('modalOverlay');
+            const modal = overlay.querySelector('div');
+            overlay.classList.remove('opacity-100');
+            modal.classList.remove('scale-100');
+            modal.classList.add('scale-95');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                overlay.classList.remove('flex');
+            }, 300);
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // Close modal on background click
+        document.getElementById('modalOverlay').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modalOverlay')) closeModal();
+        });
+    </script>
+</body></html>
