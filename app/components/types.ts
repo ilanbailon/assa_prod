@@ -1,11 +1,22 @@
-export interface Requirement {
-  code: string;
-  type: 'Staff' | 'Machine' | 'Service';
-  requestDate: string;
-  description: string;
-  status: 'PENDING' | 'APPROVED' | 'IN_PROGRESS' | 'REJECTED';
-  attachmentUrl?: string;
-  requestor: string;
-  priority: 'HIGH' | 'MEDIUM' | 'LOW';
-  module: string;
+export interface PersonalAssa {
+  id: number;
+  tramo: string;
+  solicitud?: string | null;
+  fechaSolicitud?: string | null;
+  estado: 'Activo' | 'Requerimiento';
+  capataz?: string | null;
+  cargo: string;
+  nombres?: string | null;
+  codigo?: string | null;
+  dni?: string | null;
+  fecing?: string | null;
+  createdAt?: string;
+}
+
+export interface GroupedRequirementReport {
+  tramo: string;
+  solicitud: string;
+  cargo: string;
+  cantidad: number;
+  fechaSolicitud?: string | null;
 }

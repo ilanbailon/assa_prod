@@ -1,32 +1,34 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Requirement } from "./types";
+import { PersonalAssa, GroupedRequirementReport } from "./types";
 import Icon from "./Icon";
 
 interface RequirementTableProps {
-  requirements: Requirement[];
-  onStatusChange: (code: string, newStatus: Requirement["status"]) => void;
-  onEditClick: (req: Requirement) => void;
-  onDeleteClick: (code: string) => void;
+  activeTab: string; // "personal" | "requirements"
+  staff: PersonalAssa[];
+  report: GroupedRequirementReport[];
   currentPage: number;
   totalCount: number;
   limit: number;
-  filterType: string;
-  sortBy: string;
+  filterTramo: string;
+  filterCargo: string;
+  existingTramos: string[];
+  existingCargos: string[];
 }
 
 export default function RequirementTable({
-  requirements,
-  onStatusChange,
-  onEditClick,
-  onDeleteClick,
+  activeTab,
+  staff,
+  report,
   currentPage,
   totalCount,
   limit,
-  filterType,
-  sortBy,
+  filterTramo,
+  filterCargo,
+  existingTramos,
+  existingCargos,
 }: RequirementTableProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -42,79 +44,45 @@ export default function RequirementTable({
         params.set(key, String(value));
       }
     });
-    // Reset page to 1 when changing filters or sorting
+    // Reset page to 1 when changing filters
     if (!("page" in newParams)) {
       params.delete("page");
     }
     router.push(`${pathname}?${params.toString()}`);
   };
 
-  // Get icon for type
-  const getTypeIcon = (type: Requirement["type"]) => {
-    switch (type) {
-      case "Staff":
-        return "person";
-      case "Machine":
-        return "precision_manufacturing";
-      case "Service":
-        return "settings_suggest";
-      default:
-        return "description";
-    }
-  };
-
-  // Status badge style generator
-  const getStatusBadgeClass = (status: Requirement["status"]) => {
-    switch (status) {
-      case "PENDING":
-        return "bg-amber-50 border border-amber-200 text-amber-800";
-      case "APPROVED":
-        return "bg-hint-of-green border border-mosque/20 text-mosque";
-      case "IN_PROGRESS":
-        return "bg-blue-50 border border-blue-200 text-blue-800";
-      case "REJECTED":
-        return "bg-red-50 border border-red-200 text-red-800";
-    }
-  };
-
-  // Priority badge style generator
-  const getPriorityBadgeClass = (priority: Requirement["priority"]) => {
-    switch (priority) {
-      case "HIGH":
-        return "bg-red-50 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded border border-red-100";
-      case "MEDIUM":
-        return "bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-100";
-      case "LOW":
-        return "bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-200";
-    }
-  };
-
-  const [activeActionsMenu, setActiveActionsMenu] = useState<string | null>(null);
-
-  const toggleActions = (code: string) => {
-    if (activeActionsMenu === code) {
-      setActiveActionsMenu(null);
-    } else {
-      setActiveActionsMenu(code);
-    }
-  };
-
   const handleExportCSV = () => {
-    const headers = "Código,Tipo,Módulo,Solicitante,Fecha,Descripción,Prioridad,Estado\n";
-    const rows = requirements
-      .map(
-        (r) =>
-          `"${r.code}","${r.type}","${r.module}","${r.requestor}","${r.requestDate}","${r.description.replace(
-            /"/g,
-            '""'
-          )}","${r.priority}","${r.status}"`
-      )
-      .join("\n");
+    let headers = "";
+    let rows = "";
+    let filename = "";
+
+    if (activeTab === "personal") {
+      headers = "Código,DNI,Apellidos y Nombres,Cargo,Capataz/Encargado,Tramo (Frente),Fecha de Ingreso\n";
+      rows = staff
+        .map(
+          (s) =>
+            `"${s.codigo || ""}","${s.dni || ""}","${s.nombres || ""}","${s.cargo || ""}","${s.capataz || ""}","${
+              s.tramo || ""
+            }","${s.fecing || ""}"`
+        )
+        .join("\n");
+      filename = `personal_activo_assa_${new Date().toISOString().slice(0, 10)}.csv`;
+    } else {
+      headers = "Frente (Tramo),Nro Requerimiento (Solicitud),Cargo (Puesto),Cantidad,Fecha de Solicitud\n";
+      rows = report
+        .map(
+          (r) =>
+            `"${r.tramo}","${r.solicitud}","${r.cargo}","${r.cantidad}","${r.fechaSolicitud || ""}"`
+        )
+        .join("\n");
+      filename = `requerimientos_agrupados_assa_${new Date().toISOString().slice(0, 10)}.csv`;
+    }
+
     const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `requerimientos_assa_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", filename);
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -122,56 +90,59 @@ export default function RequirementTable({
   };
 
   const totalPages = Math.ceil(totalCount / limit) || 1;
-
-  // Calculate items range shown
   const startItem = totalCount === 0 ? 0 : (currentPage - 1) * limit + 1;
   const endItem = Math.min(currentPage * limit, totalCount);
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-4">
       {/* Filters Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 bg-white p-4 border border-nordic/10 rounded-xl shadow-sm">
-        {/* Type Filter Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-sf-pro text-[11px] font-bold tracking-wider text-nordic/50 uppercase mr-2">
-            Filtrar Tipo:
-          </span>
-          {["All", "Staff", "Machine", "Service"].map((type) => (
-            <button
-              key={type}
-              onClick={() => updateParams({ type })}
-              className={`px-3 py-1 text-xs font-bold rounded-full border transition-all cursor-pointer ${
-                type === filterType
-                  ? "bg-mosque text-clear-day border-mosque shadow-sm"
-                  : "bg-white text-nordic/70 border-nordic/10 hover:bg-clear-day"
-              }`}
-            >
-              {type === "All" ? "Todos" : type}
-            </button>
-          ))}
-        </div>
-
-        {/* Sort & Actions */}
-        <div className="flex items-center gap-4 ml-0 md:ml-auto">
-          <div className="flex items-center gap-2">
-            <span className="font-sf-pro text-[11px] font-bold tracking-wider text-nordic/50 uppercase hidden sm:inline">
-              Ordenar por:
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 border border-nordic/10 rounded-xl shadow-sm">
+        {/* Tramo & Cargo Select Filters */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full lg:w-auto">
+          {/* Tramo (Frente) Filter */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <span className="font-sf-pro text-[10px] font-bold tracking-wider text-nordic/50 uppercase whitespace-nowrap">
+              Frente (Tramo):
             </span>
             <select
-              value={sortBy}
-              onChange={(e) => updateParams({ sort: e.target.value })}
-              className="bg-white border border-nordic/10 text-xs font-bold text-nordic py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-mosque/40 transition-all"
+              value={filterTramo}
+              onChange={(e) => updateParams({ tramo: e.target.value })}
+              className="bg-clear-day border border-nordic/10 text-xs font-bold text-nordic py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-mosque/40 transition-all w-full sm:w-48 cursor-pointer"
             >
-              <option value="newest">Fecha: Recientes</option>
-              <option value="oldest">Fecha: Antiguos</option>
-              <option value="priority">Prioridad</option>
-              <option value="status">Estado</option>
+              <option value="All">Todos los Frentes</option>
+              {existingTramos.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
             </select>
           </div>
 
+          {/* Cargo (Puesto) Filter */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <span className="font-sf-pro text-[10px] font-bold tracking-wider text-nordic/50 uppercase whitespace-nowrap">
+              Puesto (Cargo):
+            </span>
+            <select
+              value={filterCargo}
+              onChange={(e) => updateParams({ cargo: e.target.value })}
+              className="bg-clear-day border border-nordic/10 text-xs font-bold text-nordic py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-mosque/40 transition-all w-full sm:w-48 cursor-pointer"
+            >
+              <option value="All">Todos los Puestos</option>
+              {existingCargos.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* CSV Action Button */}
+        <div className="flex justify-end shrink-0">
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 text-xs font-bold text-mosque hover:text-mosque/80 hover:underline cursor-pointer outline-none transition-colors border border-mosque/10 px-3 py-1.5 rounded-lg bg-clear-day/40"
+            className="flex items-center justify-center gap-1.5 text-xs font-bold text-mosque hover:text-mosque/80 hover:underline cursor-pointer outline-none transition-colors border border-mosque/10 px-3 py-2 rounded-lg bg-clear-day/40 w-full sm:w-auto"
           >
             <Icon name="download" className="h-4 w-4" />
             <span>Exportar CSV</span>
@@ -179,263 +150,290 @@ export default function RequirementTable({
         </div>
       </div>
 
-      {/* Main Container */}
+      {/* Main Report Container */}
       <div className="bg-white border border-nordic/10 rounded-xl shadow-sm overflow-hidden">
-        {/* Desktop Table View */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-clear-day border-b border-nordic/10">
-                <th className="px-6 py-4 font-sf-pro text-[11px] font-bold tracking-wider text-nordic/60 uppercase">
-                  Código
-                </th>
-                <th className="px-6 py-4 font-sf-pro text-[11px] font-bold tracking-wider text-nordic/60 uppercase">
-                  Tipo
-                </th>
-                <th className="px-6 py-4 font-sf-pro text-[11px] font-bold tracking-wider text-nordic/60 uppercase">
-                  Módulo
-                </th>
-                <th className="px-6 py-4 font-sf-pro text-[11px] font-bold tracking-wider text-nordic/60 uppercase">
-                  Fecha Solicitud
-                </th>
-                <th className="px-6 py-4 font-sf-pro text-[11px] font-bold tracking-wider text-nordic/60 uppercase">
-                  Descripción / Especificaciones
-                </th>
-                <th className="px-6 py-4 font-sf-pro text-[11px] font-bold tracking-wider text-nordic/60 uppercase text-center">
-                  Prioridad
-                </th>
-                <th className="px-6 py-4 font-sf-pro text-[11px] font-bold tracking-wider text-nordic/60 uppercase text-center">
-                  Estado
-                </th>
-                <th className="px-6 py-4 font-sf-pro text-[11px] font-bold tracking-wider text-nordic/60 uppercase text-right">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-nordic/5">
-              {requirements.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-nordic/50 font-semibold">
-                    No se encontraron requerimientos.
-                  </td>
-                </tr>
-              ) : (
-                requirements.map((req) => (
-                  <tr
-                    key={req.code}
-                    className="hover:bg-clear-day/30 transition-colors group relative"
-                  >
-                    <td className="px-6 py-4 font-mono text-xs font-semibold text-nordic/85">
-                      {req.code}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-nordic">
-                        <Icon name={getTypeIcon(req.type)} className="h-4.5 w-4.5 text-mosque" />
-                        <span>{req.type}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-xs font-semibold text-nordic/70">
-                      {req.module}
-                    </td>
-                    <td className="px-6 py-4 text-xs text-nordic/60 font-semibold">
-                      {new Date(req.requestDate).toLocaleDateString("es-ES", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </td>
-                    <td className="px-6 py-4 text-xs font-bold text-nordic max-w-xs truncate" title={req.description}>
-                      {req.description}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={getPriorityBadgeClass(req.priority)}>
-                        {req.priority}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex justify-center">
-                        <span
-                          className={`px-2.5 py-0.5 rounded text-[10px] font-bold tracking-wider ${getStatusBadgeClass(
-                            req.status
-                          )}`}
-                        >
-                          {req.status}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right relative">
-                      <div className="flex items-center justify-end gap-2">
-                        {req.attachmentUrl && (
-                          <a
-                            href={req.attachmentUrl}
-                            className="p-1 rounded text-nordic/50 hover:text-mosque hover:bg-clear-day transition-colors"
-                            title="Ver adjunto"
-                          >
-                            <Icon name="description" className="h-5 w-5" />
-                          </a>
-                        )}
-                        <button
-                          onClick={() => toggleActions(req.code)}
-                          className="p-1 rounded text-nordic/50 hover:text-nordic hover:bg-clear-day transition-colors outline-none cursor-pointer flex items-center justify-center"
-                        >
-                          <Icon name="more_vert" className="h-5 w-5" />
-                        </button>
-                      </div>
-
-                      {/* Dropdown Menu */}
-                      {activeActionsMenu === req.code && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-40"
-                            onClick={() => setActiveActionsMenu(null)}
-                          />
-                          <div className="absolute right-6 top-12 w-48 bg-white border border-nordic/10 rounded-lg shadow-lg py-1 z-50 text-left">
-                            <button
-                              onClick={() => {
-                                onEditClick(req);
-                                setActiveActionsMenu(null);
-                              }}
-                              className="w-full flex items-center px-4 py-2 text-xs font-bold text-nordic hover:bg-clear-day transition-colors cursor-pointer"
-                            >
-                              <Icon name="edit" className="h-4 w-4 mr-2.5 text-nordic/60" />
-                              Editar Requerimiento
-                            </button>
-                            <div className="border-t border-nordic/5 my-1" />
-                            <div className="px-4 py-1 text-[9px] font-extrabold tracking-wider text-nordic/40 uppercase">
-                              Cambiar Estado
-                            </div>
-                            {(["PENDING", "APPROVED", "IN_PROGRESS", "REJECTED"] as const).map(
-                              (status) => (
-                                <button
-                                  key={status}
-                                  onClick={() => {
-                                    onStatusChange(req.code, status);
-                                    setActiveActionsMenu(null);
-                                  }}
-                                  className={`w-full flex items-center px-4 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                                    req.status === status
-                                      ? "text-mosque bg-hint-of-green/45 font-bold"
-                                      : "text-nordic/70 hover:bg-clear-day"
-                                  }`}
-                                >
-                                  <span className="h-1.5 w-1.5 rounded-full bg-current mr-2.5" />
-                                  {status}
-                                </button>
-                              )
-                            )}
-                            <div className="border-t border-nordic/5 my-1" />
-                            <button
-                              onClick={() => {
-                                if (confirm(`¿Eliminar requerimiento ${req.code}?`)) {
-                                  onDeleteClick(req.code);
-                                }
-                                setActiveActionsMenu(null);
-                              }}
-                              className="w-full flex items-center px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                            >
-                              <Icon name="delete" className="h-4 w-4 mr-2.5 text-red-600" />
-                              Eliminar
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </td>
+        {activeTab === "personal" ? (
+          /* ==================== ACTIVE STAFF VIEW ==================== */
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-clear-day border-b border-nordic/10">
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
+                      Código
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
+                      DNI
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
+                      Apellidos y Nombres
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
+                      Cargo / Puesto
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
+                      Capataz / Encargado
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
+                      Frente (Tramo)
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase text-right">
+                      Fec. Ingreso
+                    </th>
                   </tr>
+                </thead>
+                <tbody className="divide-y divide-nordic/5">
+                  {staff.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-nordic/50 font-semibold">
+                        No se encontró personal activo.
+                      </td>
+                    </tr>
+                  ) : (
+                    staff.map((s) => (
+                      <tr key={s.id} className="hover:bg-clear-day/30 transition-colors">
+                        <td className="px-6 py-4 font-mono text-xs font-semibold text-nordic/85">
+                          {s.codigo || "-"}
+                        </td>
+                        <td className="px-6 py-4 text-xs font-semibold text-nordic/70">
+                          {s.dni || "-"}
+                        </td>
+                        <td className="px-6 py-4 text-xs font-bold text-nordic">
+                          {s.nombres}
+                        </td>
+                        <td className="px-6 py-4 text-xs text-nordic font-semibold">
+                          <span className="bg-clear-day px-2 py-0.5 rounded text-nordic/80 border border-nordic/10 text-[11px]">
+                            {s.cargo}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-xs text-nordic/65 font-semibold">
+                          {s.capataz || "-"}
+                        </td>
+                        <td className="px-6 py-4 text-xs text-nordic/65 font-semibold">
+                          {s.tramo}
+                        </td>
+                        <td className="px-6 py-4 text-xs text-nordic/60 font-semibold text-right">
+                          {s.fecing
+                            ? new Date(s.fecing).toLocaleDateString("es-ES", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : "-"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="block md:hidden divide-y divide-nordic/5">
+              {staff.length === 0 ? (
+                <div className="px-6 py-8 text-center text-nordic/50 font-semibold text-sm">
+                  No se encontró personal activo.
+                </div>
+              ) : (
+                staff.map((s) => (
+                  <div key={s.id} className="p-4 space-y-2 bg-white hover:bg-clear-day/10 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-bold text-nordic/80">
+                        Cód: {s.codigo || "-"}
+                      </span>
+                      <span className="text-[11px] text-nordic/50 font-semibold">
+                        DNI: {s.dni || "-"}
+                      </span>
+                    </div>
+
+                    <p className="text-sm font-extrabold text-nordic leading-tight">
+                      {s.nombres}
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="bg-clear-day px-2 py-0.5 rounded text-nordic border border-nordic/10 text-[10px] font-bold">
+                        {s.cargo}
+                      </span>
+                      <span className="text-[10px] text-nordic/60 font-semibold">
+                        &bull; {s.tramo}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-2 border-t border-nordic/5 text-[11px] text-nordic/50">
+                      <span>Capataz: {s.capataz || "-"}</span>
+                      <span>
+                        F. Ingreso:{" "}
+                        {s.fecing
+                          ? new Date(s.fecing).toLocaleDateString("es-ES", {
+                              year: "2-digit",
+                              month: "2-digit",
+                              day: "2-digit",
+                            })
+                          : "-"}
+                      </span>
+                    </div>
+                  </div>
                 ))
               )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile Cards View */}
-        <div className="block md:hidden divide-y divide-nordic/5">
-          {requirements.length === 0 ? (
-            <div className="px-6 py-8 text-center text-nordic/50 font-semibold text-sm">
-              No se encontraron requerimientos.
             </div>
-          ) : (
-            requirements.map((req) => (
-              <div key={req.code} className="p-4 space-y-3 bg-white">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-nordic/85">
-                    {req.code}
-                  </span>
-                  <span
-                    className={`px-2 py-0.5 rounded text-[9px] font-bold tracking-wider ${getStatusBadgeClass(
-                      req.status
-                    )}`}
-                  >
-                    {req.status}
-                  </span>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <Icon name={getTypeIcon(req.type)} className="h-4.5 w-4.5 text-mosque" />
-                  <span className="text-xs font-bold text-nordic">
-                    {req.type} &mdash; <span className="text-nordic/60 font-semibold">{req.module}</span>
-                  </span>
-                </div>
-
-                <p className="text-xs font-bold text-nordic leading-relaxed">
-                  {req.description}
-                </p>
-
-                <div className="flex items-center justify-between pt-2 border-t border-nordic/5 text-[11px] text-nordic/50">
-                  <span>
-                    Fecha: {new Date(req.requestDate).toLocaleDateString("es-ES")}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className={getPriorityBadgeClass(req.priority)}>
-                      {req.priority}
-                    </span>
-                    <button
-                      onClick={() => onEditClick(req)}
-                      className="text-mosque font-bold hover:underline"
-                    >
-                      Editar
-                    </button>
-                  </span>
-                </div>
+            {/* Table Footer / Pagination */}
+            <div className="bg-clear-day px-6 py-4 flex flex-col sm:flex-row items-center justify-between border-t border-nordic/10 text-xs text-nordic/60 font-semibold gap-3">
+              <span>
+                Mostrando {startItem} a {endItem} de {totalCount} registros de personal
+              </span>
+              <div className="flex gap-1.5">
+                <button
+                  disabled={currentPage <= 1}
+                  onClick={() => updateParams({ page: currentPage - 1 })}
+                  className="p-1 border border-nordic/15 rounded bg-white hover:bg-clear-day transition-colors cursor-pointer text-nordic/50 hover:text-nordic outline-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Icon name="chevron_left" className="h-4 w-4" />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => Math.abs(p - currentPage) < 3 || p === 1 || p === totalPages)
+                  .map((p, idx, arr) => {
+                    const prev = arr[idx - 1];
+                    const showEllipsis = prev && p - prev > 1;
+                    return (
+                      <React.Fragment key={p}>
+                        {showEllipsis && <span className="px-1.5 self-end">...</span>}
+                        <button
+                          onClick={() => updateParams({ page: p })}
+                          className={`px-2.5 py-1 border rounded font-bold text-[11px] outline-none cursor-pointer transition-colors ${
+                            p === currentPage
+                              ? "bg-mosque text-clear-day border-mosque"
+                              : "bg-white border-nordic/15 text-nordic/70 hover:bg-clear-day"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+                <button
+                  disabled={currentPage >= totalPages}
+                  onClick={() => updateParams({ page: currentPage + 1 })}
+                  className="p-1 border border-nordic/15 rounded bg-white hover:bg-clear-day transition-colors cursor-pointer text-nordic/50 hover:text-nordic outline-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Icon name="chevron_right" className="h-4 w-4" />
+                </button>
               </div>
-            ))
-          )}
-        </div>
+            </div>
+          </>
+        ) : (
+          /* ==================== GROUPED REQUIREMENTS REPORT VIEW ==================== */
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-clear-day border-b border-nordic/10">
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
+                      Frente (Tramo)
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
+                      Nro. Requerimiento (Solicitud)
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
+                      Cargo / Puesto
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase text-center">
+                      Cantidad Requerida
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase text-right">
+                      Fecha Solicitud
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-nordic/5">
+                  {report.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-nordic/50 font-semibold">
+                        No se encontraron requerimientos registrados.
+                      </td>
+                    </tr>
+                  ) : (
+                    report.map((r, index) => (
+                      <tr key={index} className="hover:bg-clear-day/30 transition-colors">
+                        <td className="px-6 py-4 text-xs font-bold text-nordic">
+                          {r.tramo}
+                        </td>
+                        <td className="px-6 py-4 font-mono text-xs font-semibold text-nordic/85">
+                          {r.solicitud}
+                        </td>
+                        <td className="px-6 py-4 text-xs text-nordic font-semibold">
+                          {r.cargo}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="bg-mosque/10 text-mosque border border-mosque/20 font-bold px-3 py-1 rounded-full text-xs">
+                            {r.cantidad} {r.cantidad === 1 ? "persona" : "personas"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-xs text-nordic/60 font-semibold text-right">
+                          {r.fechaSolicitud
+                            ? new Date(r.fechaSolicitud).toLocaleDateString("es-ES", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : "-"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-        {/* Table Footer / Pagination Info */}
-        <div className="bg-clear-day px-6 py-4 flex items-center justify-between border-t border-nordic/10 text-xs text-nordic/60 font-semibold">
-          <span>
-            Mostrando {startItem} a {endItem} de {totalCount} registros
-          </span>
-          <div className="flex gap-1.5">
-            <button
-              disabled={currentPage <= 1}
-              onClick={() => updateParams({ page: currentPage - 1 })}
-              className="p-1 border border-nordic/15 rounded bg-white hover:bg-clear-day transition-colors cursor-pointer text-nordic/50 hover:text-nordic outline-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Icon name="chevron_left" className="h-4 w-4" />
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                onClick={() => updateParams({ page: p })}
-                className={`px-2.5 py-1 border rounded font-bold text-[11px] outline-none cursor-pointer transition-colors ${
-                  p === currentPage
-                    ? "bg-mosque text-clear-day border-mosque"
-                    : "bg-white border-nordic/15 text-nordic/70 hover:bg-clear-day"
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-            <button
-              disabled={currentPage >= totalPages}
-              onClick={() => updateParams({ page: currentPage + 1 })}
-              className="p-1 border border-nordic/15 rounded bg-white hover:bg-clear-day transition-colors cursor-pointer text-nordic/50 hover:text-nordic outline-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Icon name="chevron_right" className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+            {/* Mobile Cards */}
+            <div className="block md:hidden divide-y divide-nordic/5">
+              {report.length === 0 ? (
+                <div className="px-6 py-8 text-center text-nordic/50 font-semibold text-sm">
+                  No se encontraron requerimientos registrados.
+                </div>
+              ) : (
+                report.map((r, index) => (
+                  <div key={index} className="p-4 space-y-3 bg-white hover:bg-clear-day/10 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-bold text-nordic/80 bg-clear-day border border-nordic/15 px-2 py-0.5 rounded">
+                        Req: {r.solicitud}
+                      </span>
+                      <span className="bg-mosque text-clear-day font-bold px-2 py-0.5 rounded-full text-[10px] tracking-wider uppercase">
+                        Cant: {r.cantidad}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-bold text-nordic/50 uppercase tracking-wider">Frente / Tramo</h4>
+                      <p className="text-sm font-extrabold text-nordic leading-tight">{r.tramo}</p>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-2 border-t border-nordic/5 text-[11px] text-nordic/50">
+                      <span className="font-bold text-mosque">{r.cargo}</span>
+                      <span>
+                        F. Solicitud:{" "}
+                        {r.fechaSolicitud
+                          ? new Date(r.fechaSolicitud).toLocaleDateString("es-ES", {
+                              year: "2-digit",
+                              month: "2-digit",
+                              day: "2-digit",
+                            })
+                          : "-"}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Table Footer */}
+            <div className="bg-clear-day px-6 py-4 border-t border-nordic/10 text-xs text-nordic/60 font-semibold">
+              Mostrando {report.length} grupos de requerimientos en el frente actual
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,53 +1,55 @@
 import React from "react";
-import { Requirement } from "./types";
 import Icon from "./Icon";
 
 interface StatsOverviewProps {
-  requirements: Requirement[];
+  activeStaffCount: number;
+  totalRequirementsCount: number;
+  tramoCount: number;
+  cargoCount: number;
 }
 
-export default function StatsOverview({ requirements }: StatsOverviewProps) {
-  const total = requirements.length;
-  const pending = requirements.filter((r) => r.status === "PENDING").length;
-  const approved = requirements.filter((r) => r.status === "APPROVED").length;
-  const inProgress = requirements.filter((r) => r.status === "IN_PROGRESS").length;
-
+export default function StatsOverview({
+  activeStaffCount,
+  totalRequirementsCount,
+  tramoCount,
+  cargoCount,
+}: StatsOverviewProps) {
   const stats = [
     {
-      label: "TOTAL REQUERIMIENTOS",
-      value: total,
+      label: "Personal Activo",
+      value: activeStaffCount,
       isHighlighted: true,
-      icon: "assignment",
+      icon: "group",
     },
     {
-      label: "PENDIENTES",
-      value: pending,
+      label: "Personal Requerido",
+      value: totalRequirementsCount,
       isHighlighted: false,
-      icon: "schedule",
-      textColor: "text-amber-600",
+      icon: "assignment_ind",
+      textColor: "text-mosque",
     },
     {
-      label: "EN DESARROLLO",
-      value: inProgress,
+      label: "Frentes Activos",
+      value: tramoCount,
       isHighlighted: false,
-      icon: "trending_up",
+      icon: "lan",
       textColor: "text-blue-600",
     },
     {
-      label: "APROBADOS",
-      value: approved,
+      label: "Puestos Existentes",
+      value: cargoCount,
       isHighlighted: false,
-      icon: "check_circle",
-      textColor: "text-mosque",
+      icon: "work",
+      textColor: "text-amber-600",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {stats.map((stat, index) => (
         <div
           key={index}
-          className={`px-6 py-5 border rounded-xl flex flex-col justify-between transition-all duration-300 hover:shadow-md ${
+          className={`px-4 py-4 md:px-6 md:py-5 border rounded-xl flex flex-col justify-between transition-all duration-300 hover:shadow-md ${
             stat.isHighlighted
               ? "bg-hint-of-green border-mosque/20 text-nordic"
               : "bg-white border-nordic/10 text-nordic"
@@ -59,12 +61,12 @@ export default function StatsOverview({ requirements }: StatsOverviewProps) {
             </span>
             <Icon
               name={stat.icon}
-              className={`h-6 w-6 ${
+              className={`h-5 w-5 md:h-6 md:w-6 ${
                 stat.isHighlighted ? "text-mosque" : stat.textColor || "text-nordic/50"
               }`}
             />
           </div>
-          <span className="font-sf-pro text-2xl md:text-3xl font-extrabold tracking-tight mt-1">
+          <span className="font-sf-pro text-xl md:text-3xl font-extrabold tracking-tight mt-1">
             {stat.value}
           </span>
         </div>

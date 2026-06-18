@@ -12,10 +12,8 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose, activeTab, setActiveTab }: SidebarProps) {
   const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: "dashboard" },
-    { id: "requirements", label: "Requerimientos", icon: "assignment_late" },
-    { id: "modules", label: "Módulos ASSA", icon: "inventory_2" },
-    { id: "reports", label: "Reportes", icon: "construction" },
+    { id: "personal", label: "Personal Activo", icon: "group" },
+    { id: "requirements", label: "Requerimientos", icon: "assignment_ind" },
   ];
 
   return (
@@ -41,7 +39,7 @@ export default function Sidebar({ isOpen, onClose, activeTab, setActiveTab }: Si
               Control ASSA
             </h1>
             <p className="text-xs text-clear-day/75 mt-0.5">
-              Sistema de Requerimientos
+              Gestión de Personal
             </p>
           </div>
           {/* Close button for mobile */}
