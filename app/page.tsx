@@ -1,8 +1,8 @@
 import React from "react";
 import HomeClient from "./home-client";
+import { PersonalAssa } from "./components/types";
 import {
-  getActiveStaffAction,
-  getRequirementsReportAction,
+  getAllPersonalAction,
   getExistingCargosAction,
   getExistingTramosAction,
 } from "./actions";
@@ -14,51 +14,28 @@ export default async function Home({
 }: {
   searchParams: Promise<{
     tab?: string;
-    page?: string;
     search?: string;
-    tramo?: string;
-    cargo?: string;
   }>;
 }) {
   const resolvedParams = await searchParams;
   const tab = resolvedParams.tab || "personal";
-  const page = parseInt(resolvedParams.page || "1", 10);
   const search = resolvedParams.search || "";
-  const tramo = resolvedParams.tramo || "All";
-  const cargo = resolvedParams.cargo || "All";
 
   // Fetch lists for filters and dropdowns
   const existingCargos = await getExistingCargosAction();
   const existingTramos = await getExistingTramosAction();
 
-  // Fetch counts for the global metrics cards
-  const { totalCount: activeStaffCount } = await getActiveStaffAction(1, 1);
-  const { report: globalReport } = await getRequirementsReportAction();
-  const totalRequirementsCount = globalReport.reduce((acc, curr) => acc + curr.cantidad, 0);
+  // Fetch all personnel records to perform groupings dynamically
+  const allPersonal: PersonalAssa[] = await getAllPersonalAction();
 
-  let staff: any[] = [];
-  let report: any[] = [];
-  let totalCount = 0;
-
-  if (tab === "personal") {
-    const res = await getActiveStaffAction(page, 10, search, tramo, cargo);
-    staff = res.staff;
-    totalCount = res.totalCount;
-  } else {
-    const res = await getRequirementsReportAction(search, tramo, cargo);
-    report = res.report;
-    totalCount = res.report.length;
-  }
+  // Calculate stats for overview
+  const activeStaffCount = allPersonal.filter((p) => p.estado === "Activo").length;
+  const totalRequirementsCount = allPersonal.filter((p) => p.estado === "Requerimiento").length;
 
   return (
     <HomeClient
       activeTab={tab}
-      staff={staff}
-      report={report}
-      totalCount={totalCount}
-      currentPage={page}
-      filterTramo={tramo}
-      filterCargo={cargo}
+      allPersonal={allPersonal}
       searchQuery={search}
       existingTramos={existingTramos}
       existingCargos={existingCargos}

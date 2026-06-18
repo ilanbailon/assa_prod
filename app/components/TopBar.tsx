@@ -103,22 +103,10 @@ export default function TopBar({
           <span>Nuevo Requerimiento</span>
         </button>
 
-        {/* Notifications & Profile (Lined separator) */}
-        <div className="flex items-center gap-2 md:gap-4 border-l border-nordic/10 pl-3 md:pl-6">
-          <button className="text-nordic/60 hover:text-mosque hover:scale-105 active:scale-95 transition-all relative cursor-pointer outline-none flex items-center justify-center p-1 rounded-full">
-            <Icon name="notifications" className="h-6 w-6" />
-            {/* Status dot */}
-            <span className="absolute top-0.5 right-0.5 block h-2 w-2 rounded-full ring-2 ring-white bg-red-500" />
-          </button>
-
-          {/* User Profile */}
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-hint-of-green text-nordic font-bold text-xs flex items-center justify-center border border-mosque/20 shadow-sm select-none">
-              PM
-            </div>
-            <span className="hidden lg:block text-xs font-bold text-nordic">
-              Pedro M.
-            </span>
+        {/* User Profile */}
+        <div className="flex items-center gap-2 border-l border-nordic/10 pl-3 md:pl-6">
+          <div className="h-8 w-8 rounded-full bg-hint-of-green text-nordic font-bold text-xs flex items-center justify-center border border-mosque/20 shadow-sm select-none">
+            PM
           </div>
         </div>
       </div>

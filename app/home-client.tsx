@@ -1,23 +1,20 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Sidebar from "./components/Sidebar";
 import TopBar from "./components/TopBar";
 import StatsOverview from "./components/StatsOverview";
 import RequirementTable from "./components/RequirementTable";
 import RequirementModal from "./components/RequirementModal";
-import { PersonalAssa, GroupedRequirementReport } from "./components/types";
-import { createPersonalRequirementAction } from "./actions";
+import DetailModal from "./components/DetailModal";
+import SolicitudModal from "./components/SolicitudModal";
+import { PersonalAssa } from "./components/types";
+import { createPersonalRequirementAction, promoteRequirementAction } from "./actions";
 
 interface HomeClientProps {
   activeTab: string;
-  staff: PersonalAssa[];
-  report: GroupedRequirementReport[];
-  totalCount: number;
-  currentPage: number;
-  filterTramo: string;
-  filterCargo: string;
+  allPersonal: PersonalAssa[];
   searchQuery: string;
   existingTramos: string[];
   existingCargos: string[];
@@ -29,12 +26,7 @@ interface HomeClientProps {
 
 export default function HomeClient({
   activeTab,
-  staff,
-  report,
-  totalCount,
-  currentPage,
-  filterTramo,
-  filterCargo,
+  allPersonal,
   searchQuery,
   existingTramos,
   existingCargos,
@@ -44,19 +36,26 @@ export default function HomeClient({
   cargoCount,
 }: HomeClientProps) {
   const router = useRouter();
-  const pathname = usePathname();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRequirementModalOpen, setIsRequirementModalOpen] = useState(false);
+
+  // States for Active Staff Capataz Detail Modal
+  const [activeDetailCapataz, setActiveDetailCapataz] = useState<string | null>(null);
+  const [activeDetailTramo, setActiveDetailTramo] = useState<string | null>(null);
+
+  // States for Requirement Solicitud Detail Modal
+  const [activeSolicitud, setActiveSolicitud] = useState<string | null>(null);
+  const [activeSolicitudTramo, setActiveSolicitudTramo] = useState<string | null>(null);
 
   const handleTabChange = (tabId: string) => {
+    // Only "personal" tab is left in sidebar
     const params = new URLSearchParams();
     params.set("tab", tabId);
-    // Reset page and other parameters when changing tabs to avoid mismatching filters
-    router.push(`${pathname}?${params.toString()}`);
+    router.push(`/?${params.toString()}`);
   };
 
-  const handleModalSubmit = async (data: {
+  const handleRequirementSubmit = async (data: {
     tramo: string;
     solicitud: string;
     fechaSolicitud: string;
@@ -71,6 +70,63 @@ export default function HomeClient({
     }
   };
 
+  const handlePromoteRequirement = async (
+    id: number,
+    data: {
+      nombres: string;
+      codigo: string;
+      dni: string;
+      capataz: string;
+      fecing: string;
+    }
+  ) => {
+    const result = await promoteRequirementAction(id, data);
+    if (!result.success) {
+      alert(`Error al activar personal: ${result.error}`);
+      throw new Error(result.error);
+    } else {
+      router.refresh();
+    }
+  };
+
+  // Derive distinct capataces list from all active staff to feed the dropdown in SolicitudModal
+  const existingCapataces = Array.from(
+    new Set(
+      allPersonal
+        .filter((p) => p.estado === "Activo" && p.capataz && p.capataz.trim())
+        .map((p) => p.capataz!.trim())
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  // Gather active staff employees under the selected capataz & tramo
+  const capatazEmployees =
+    activeDetailCapataz && activeDetailTramo
+      ? allPersonal.filter(
+          (p) =>
+            p.estado === "Activo" &&
+            p.capataz === activeDetailCapataz &&
+            p.tramo === activeDetailTramo
+        )
+      : [];
+
+  // Group cargos and counts for the selected capataz
+  const cargoBreakdownObj: Record<string, number> = {};
+  capatazEmployees.forEach((emp) => {
+    cargoBreakdownObj[emp.cargo] = (cargoBreakdownObj[emp.cargo] || 0) + 1;
+  });
+  const cargoBreakdown = Object.entries(cargoBreakdownObj).map(([cargo, count]) => ({
+    cargo,
+    count,
+  }));
+
+  // Gather individual requirements under the selected solicitud & tramo
+  const solicitudRequirements =
+    activeSolicitud && activeSolicitudTramo
+      ? allPersonal.filter(
+          (p) => p.solicitud === activeSolicitud && p.tramo === activeSolicitudTramo
+        )
+      : [];
+
   return (
     <div className="min-h-screen bg-clear-day flex flex-col antialiased">
       {/* Sidebar Navigation */}
@@ -84,7 +140,7 @@ export default function HomeClient({
       {/* Top Header Bar */}
       <TopBar
         onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-        onAddClick={() => setIsModalOpen(true)}
+        onAddClick={() => setIsRequirementModalOpen(true)}
         searchQuery={searchQuery}
       />
 
@@ -95,14 +151,10 @@ export default function HomeClient({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="font-sf-pro text-2xl md:text-3xl font-extrabold text-nordic tracking-tight">
-                {activeTab === "personal"
-                  ? "Reporte de Personal Activo"
-                  : "Reporte de Requerimientos de Personal"}
+                Control de Personal ASSA
               </h1>
               <p className="text-xs md:text-sm font-semibold text-nordic/60 mt-1">
-                {activeTab === "personal"
-                  ? "Visualización y filtrado del personal actualmente activo en obra."
-                  : "Listado agrupado por frente, solicitud y puesto con cantidades requeridas."}
+                Visualice el resumen de personal activo por capataz y gestione la activación de requerimientos pendientes.
               </p>
             </div>
           </div>
@@ -115,29 +167,56 @@ export default function HomeClient({
             cargoCount={cargoCount}
           />
 
-          {/* Main Table/Report */}
+          {/* Main Dashboard / Interactive Reports */}
           <RequirementTable
-            activeTab={activeTab}
-            staff={staff}
-            report={report}
-            currentPage={currentPage}
-            totalCount={totalCount}
-            limit={10}
-            filterTramo={filterTramo}
-            filterCargo={filterCargo}
-            existingTramos={existingTramos}
-            existingCargos={existingCargos}
+            allPersonal={allPersonal}
+            searchQuery={searchQuery}
+            onCapatazClick={(capataz, tramo) => {
+              setActiveDetailCapataz(capataz);
+              setActiveDetailTramo(tramo);
+            }}
+            onSolicitudClick={(solicitud, tramo) => {
+              setActiveSolicitud(solicitud);
+              setActiveSolicitudTramo(tramo);
+            }}
           />
         </div>
       </main>
 
       {/* Add Requirement Modal */}
       <RequirementModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleModalSubmit}
+        isOpen={isRequirementModalOpen}
+        onClose={() => setIsRequirementModalOpen(false)}
+        onSubmit={handleRequirementSubmit}
         existingTramos={existingTramos}
         existingCargos={existingCargos}
+      />
+
+      {/* Active Staff Drill-down Detail Modal */}
+      <DetailModal
+        isOpen={!!activeDetailCapataz}
+        onClose={() => {
+          setActiveDetailCapataz(null);
+          setActiveDetailTramo(null);
+        }}
+        capataz={activeDetailCapataz || ""}
+        tramo={activeDetailTramo || ""}
+        cargoBreakdown={cargoBreakdown}
+        employees={capatazEmployees}
+      />
+
+      {/* Grouped Solicitud Detail Modal (Promotion flow) */}
+      <SolicitudModal
+        isOpen={!!activeSolicitud}
+        onClose={() => {
+          setActiveSolicitud(null);
+          setActiveSolicitudTramo(null);
+        }}
+        solicitud={activeSolicitud || ""}
+        tramo={activeSolicitudTramo || ""}
+        requirements={solicitudRequirements}
+        existingCapataces={existingCapataces}
+        onPromote={handlePromoteRequirement}
       />
     </div>
   );

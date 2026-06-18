@@ -12,8 +12,7 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose, activeTab, setActiveTab }: SidebarProps) {
   const menuItems = [
-    { id: "personal", label: "Personal Activo", icon: "group" },
-    { id: "requirements", label: "Requerimientos", icon: "assignment_ind" },
+    { id: "personal", label: "Personal", icon: "group" },
   ];
 
   return (
@@ -79,24 +78,6 @@ export default function Sidebar({ isOpen, onClose, activeTab, setActiveTab }: Si
             );
           })}
         </nav>
-
-        {/* Footer */}
-        <div className="mt-auto px-6 space-y-1 border-t border-clear-day/10 pt-6">
-          <a
-            className="flex items-center py-2.5 font-sf-pro text-sm font-semibold text-clear-day/70 hover:text-hint-of-green transition-colors"
-            href="#"
-          >
-            <Icon name="settings" className="mr-3 h-5 w-5 text-clear-day/70" />
-            <span>Configuración</span>
-          </a>
-          <a
-            className="flex items-center py-2.5 font-sf-pro text-sm font-semibold text-clear-day/70 hover:text-hint-of-green transition-colors"
-            href="#"
-          >
-            <Icon name="help" className="mr-3 h-5 w-5 text-clear-day/70" />
-            <span>Ayuda y Soporte</span>
-          </a>
-        </div>
       </aside>
     </>
   );

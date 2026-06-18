@@ -20,7 +20,95 @@ function mapPersonalToClient(row: any): PersonalAssa {
   };
 }
 
-// Get paginated and filtered active staff from Supabase
+// Fetch all personnel records (active and requirements) from Supabase
+export async function getAllPersonalAction() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    console.error("Credentials error: Supabase variables are not set in the environment.");
+    return [];
+  }
+
+  // Fetch all rows (limit set to 1000 since there are ~400, ordering by id)
+  const url = `${supabaseUrl}/rest/v1/personal_assa?order=id.asc`;
+
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": anonKey,
+        "Authorization": `Bearer ${anonKey}`,
+      },
+      next: { revalidate: 0 }
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("Supabase Rest API getAllPersonalAction fetch failed:", errText);
+      return [];
+    }
+
+    const data = await res.json();
+    return data.map(mapPersonalToClient);
+  } catch (error) {
+    console.error("Error in getAllPersonalAction:", error);
+    return [];
+  }
+}
+
+// Promote a requirement to active staff
+export async function promoteRequirementAction(
+  id: number,
+  data: {
+    nombres: string;
+    codigo: string;
+    dni: string;
+    capataz: string;
+    fecing: string;
+  }
+) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    return { success: false, error: "Supabase credentials are missing." };
+  }
+
+  try {
+    const res = await fetch(`${supabaseUrl}/rest/v1/personal_assa?id=eq.${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": anonKey,
+        "Authorization": `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify({
+        nombres: data.nombres,
+        codigo: data.codigo,
+        dni: data.dni,
+        capataz: data.capataz,
+        fecing: data.fecing,
+        estado: "Activo",
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("Supabase promote PATCH failed:", errText);
+      return { success: false, error: errText };
+    }
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error in promoteRequirementAction:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Get paginated and filtered active staff from Supabase (kept for legacy support or alternative views)
 export async function getActiveStaffAction(
   page: number = 1,
   limit: number = 10,
@@ -39,17 +127,14 @@ export async function getActiveStaffAction(
   const params = new URLSearchParams();
   params.append("estado", "eq.Activo");
 
-  // Filter by tramo (frente)
   if (tramo && tramo !== "All") {
     params.append("tramo", `eq.${tramo}`);
   }
 
-  // Filter by cargo (puesto)
   if (cargo && cargo !== "All") {
     params.append("cargo", `eq.${cargo}`);
   }
 
-  // Search query
   if (search) {
     params.append(
       "or",
@@ -57,7 +142,6 @@ export async function getActiveStaffAction(
     );
   }
 
-  // Sorting: newest entries first
   params.append("order", "fecing.desc.nullslast,id.desc");
 
   const offset = (page - 1) * limit;
@@ -119,7 +203,6 @@ export async function getRequirementsReportAction(
     return { report: [] };
   }
 
-  // Fetch all requirements to perform the grouping in memory
   const params = new URLSearchParams();
   params.append("estado", "eq.Requerimiento");
   params.append("order", "fecha_solicitud.desc.nullslast,solicitud.desc");
@@ -144,8 +227,6 @@ export async function getRequirementsReportAction(
     }
 
     const data = await res.json();
-
-    // Grouping logic in memory
     const groups: Record<string, GroupedRequirementReport> = {};
 
     for (const row of data) {
@@ -154,13 +235,9 @@ export async function getRequirementsReportAction(
       const rowCargo = row.cargo || "";
       const rowFechaSolicitud = row.fecha_solicitud || null;
 
-      // Filter by tramo
       if (tramo && tramo !== "All" && rowTramo !== tramo) continue;
-
-      // Filter by cargo
       if (cargo && cargo !== "All" && rowCargo !== cargo) continue;
 
-      // Filter by search query (check against tramo, solicitud, cargo, date)
       if (search) {
         const query = search.toLowerCase();
         const match =
@@ -185,9 +262,7 @@ export async function getRequirementsReportAction(
       groups[key].cantidad += 1;
     }
 
-    // Convert groups object to array and sort
     const report = Object.values(groups).sort((a, b) => {
-      // Sort by fechaSolicitud desc, then solicitud desc
       const dateA = a.fechaSolicitud || "";
       const dateB = b.fechaSolicitud || "";
       if (dateA !== dateB) return dateB.localeCompare(dateA);
@@ -222,7 +297,6 @@ export async function createPersonalRequirementAction(data: {
     return { success: false, error: "Datos de requerimiento inválidos o incompletos." };
   }
 
-  // Create 'cantidad' rows
   const newRows = [];
   for (let i = 0; i < cantidad; i++) {
     newRows.push({
@@ -282,7 +356,7 @@ export async function getExistingCargosAction() {
         "apikey": anonKey,
         "Authorization": `Bearer ${anonKey}`,
       },
-      next: { revalidate: 60 } // Cache this list for 60 seconds
+      next: { revalidate: 60 }
     });
 
     if (!res.ok) {
