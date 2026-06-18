@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Icon from "./Icon";
 import { PersonalAssa } from "./types";
 
@@ -22,18 +22,39 @@ export default function DetailModal({
   employees,
 }: DetailModalProps) {
   const [search, setSearch] = useState("");
+  const [selectedCargo, setSelectedCargo] = useState<string | null>(null);
+
+  // Reset filter when modal is opened/closed
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedCargo(null);
+      setSearch("");
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  // Filter employees locally in the modal
+  const handleCargoClick = (cargo: string) => {
+    if (selectedCargo === cargo) {
+      setSelectedCargo(null); // Toggle off
+    } else {
+      setSelectedCargo(cargo); // Toggle on
+    }
+  };
+
+  // Filter employees locally in the modal by search and selected cargo
   const filteredEmployees = employees.filter((emp) => {
     const q = search.toLowerCase();
-    return (
+    const matchesSearch =
+      !q ||
       (emp.nombres && emp.nombres.toLowerCase().includes(q)) ||
       (emp.codigo && emp.codigo.toLowerCase().includes(q)) ||
       (emp.dni && emp.dni.toLowerCase().includes(q)) ||
-      (emp.cargo && emp.cargo.toLowerCase().includes(q))
-    );
+      (emp.cargo && emp.cargo.toLowerCase().includes(q));
+
+    const matchesCargo = !selectedCargo || emp.cargo === selectedCargo;
+
+    return matchesSearch && matchesCargo;
   });
 
   return (
@@ -62,23 +83,43 @@ export default function DetailModal({
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
           {/* Summary Cards of Cargo Breakdown */}
           <div className="space-y-2.5">
-            <h4 className="font-sf-pro text-[10px] font-bold tracking-wider text-nordic/50 uppercase">
-              Resumen por Cargo / Puesto
-            </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {cargoBreakdown.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="bg-clear-day/50 border border-nordic/5 p-3.5 rounded-xl flex flex-col justify-between"
+            <div className="flex justify-between items-center">
+              <h4 className="font-sf-pro text-[10px] font-bold tracking-wider text-nordic/50 uppercase">
+                Filtrar por Puesto (Haga clic en una tarjeta)
+              </h4>
+              {selectedCargo && (
+                <button
+                  onClick={() => setSelectedCargo(null)}
+                  className="text-xs font-bold text-mosque hover:underline flex items-center gap-1 cursor-pointer outline-none"
                 >
-                  <span className="text-[10px] text-nordic/60 font-bold uppercase leading-tight">
-                    {item.cargo}
-                  </span>
-                  <span className="text-xl font-extrabold text-nordic mt-1.5">
-                    {item.count} {item.count === 1 ? "persona" : "personas"}
-                  </span>
-                </div>
-              ))}
+                  <Icon name="close" className="h-3 w-3" />
+                  <span>Limpiar Filtro</span>
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {cargoBreakdown.map((item, idx) => {
+                const isActive = selectedCargo === item.cargo;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleCargoClick(item.cargo)}
+                    className={`p-3.5 rounded-xl border flex flex-col justify-between text-left transition-all hover:shadow-sm cursor-pointer outline-none ${
+                      isActive
+                        ? "bg-mosque/10 border-mosque text-mosque ring-2 ring-mosque/20"
+                        : "bg-clear-day/50 border-nordic/5 text-nordic hover:bg-clear-day"
+                    }`}
+                  >
+                    <span className={`text-[10px] font-bold uppercase leading-tight ${isActive ? "text-mosque" : "text-nordic/60"}`}>
+                      {item.cargo}
+                    </span>
+                    <span className="text-xl font-extrabold mt-1.5">
+                      {item.count} {item.count === 1 ? "persona" : "personas"}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -87,6 +128,11 @@ export default function DetailModal({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h4 className="font-sf-pro text-[10px] font-bold tracking-wider text-nordic/50 uppercase">
                 Listado de Trabajadores ({filteredEmployees.length})
+                {selectedCargo && (
+                  <span className="ml-1 text-mosque font-bold">
+                    &bull; Filtrados por: {selectedCargo}
+                  </span>
+                )}
               </h4>
               {/* Search bar inside modal */}
               <div className="relative w-full sm:w-64">

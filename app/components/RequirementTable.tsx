@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PersonalAssa } from "./types";
 import Icon from "./Icon";
 
@@ -17,11 +17,20 @@ export default function RequirementTable({
   onCapatazClick,
   onSolicitudClick,
 }: RequirementTableProps) {
-  const [subTab, setSubTab] = useState<"personal" | "requirements">("personal");
+  const [subTab, setSubTab] = useState<"summary" | "personal" | "requirements">("summary");
   const [filterTramo, setFilterTramo] = useState("All");
   const [filterCargo, setFilterCargo] = useState("All");
 
-  // Get unique tramos and cargos from the dataset
+  // Local pagination for the flat Active Personal list (10 items per page)
+  const [personalPage, setPersonalPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Reset pagination page when filters, tab or search query changes
+  useEffect(() => {
+    setPersonalPage(1);
+  }, [searchQuery, filterTramo, filterCargo, subTab]);
+
+  // Get unique tramos and cargos from the dataset to feed filter dropdowns
   const tramosSet = new Set<string>();
   const cargosSet = new Set<string>();
 
@@ -59,7 +68,7 @@ export default function RequirementTable({
   const activeStaff = filtered.filter((p) => p.estado === "Activo");
   const requirements = filtered.filter((p) => p.estado === "Requerimiento");
 
-  // 2. Group Active Staff by Tramo -> Capataz
+  // 2. Group Active Staff for the "Resumen de Personal" tab (Tramo -> Capataz)
   const activeGrouped: Record<string, Record<string, number>> = {};
   activeStaff.forEach((emp) => {
     const t = emp.tramo;
@@ -73,7 +82,7 @@ export default function RequirementTable({
     activeGrouped[t][c]++;
   });
 
-  // 3. Group Requirements by Tramo -> Solicitud
+  // 3. Group Requirements for the "Requerimientos" tab (Tramo -> Solicitud)
   interface GroupedSolicitud {
     solicitud: string;
     capataz: string;
@@ -101,19 +110,35 @@ export default function RequirementTable({
     reqGrouped[t][s].totalCount++;
   });
 
+  // Flat Active Staff Pagination Calculations
+  const totalPersonalCount = activeStaff.length;
+  const totalPersonalPages = Math.ceil(totalPersonalCount / itemsPerPage) || 1;
+  const startPersonalItem = totalPersonalCount === 0 ? 0 : (personalPage - 1) * itemsPerPage + 1;
+  const endPersonalItem = Math.min(personalPage * itemsPerPage, totalPersonalCount);
+  const paginatedActiveStaff = activeStaff.slice(
+    (personalPage - 1) * itemsPerPage,
+    personalPage * itemsPerPage
+  );
+
   const handleExportCSV = () => {
     let headers = "";
     let rows = "";
     let filename = "";
 
-    if (subTab === "personal") {
+    if (subTab === "summary") {
       headers = "Tramo,Capataz,Total Personal\n";
       Object.entries(activeGrouped).forEach(([tramo, capataces]) => {
         Object.entries(capataces).forEach(([capataz, total]) => {
           rows += `"${tramo}","${capataz}","${total}"\n`;
         });
       });
-      filename = `resumen_personal_activo_${new Date().toISOString().slice(0, 10)}.csv`;
+      filename = `resumen_personal_capataz_${new Date().toISOString().slice(0, 10)}.csv`;
+    } else if (subTab === "personal") {
+      headers = "Código,DNI,Apellidos y Nombres,Cargo,Capataz,Tramo,Fecha Ingreso\n";
+      activeStaff.forEach((s) => {
+        rows += `"${s.codigo || ""}","${s.dni || ""}","${s.nombres || ""}","${s.cargo}","${s.capataz || ""}","${s.tramo}","${s.fecing || ""}"\n`;
+      });
+      filename = `personal_activo_detallado_${new Date().toISOString().slice(0, 10)}.csv`;
     } else {
       headers = "Tramo,Solicitud,Capataz,Total Requerimientos,Fecha Solicitud\n";
       Object.entries(reqGrouped).forEach(([tramo, solicitudes]) => {
@@ -138,10 +163,24 @@ export default function RequirementTable({
   return (
     <div className="w-full space-y-5">
       {/* Sub-Tabs Navigation */}
-      <div className="flex border-b border-nordic/15 shrink-0 bg-white px-2 pt-2 rounded-t-xl">
+      <div className="flex border-b border-nordic/15 shrink-0 bg-white px-2 pt-2 rounded-t-xl overflow-x-auto scrollbar-none">
+        {/* Tab 1: Resumen de Personal */}
+        <button
+          onClick={() => setSubTab("summary")}
+          className={`flex items-center gap-2 px-6 py-3 text-xs md:text-sm font-bold border-b-2 transition-all outline-none cursor-pointer whitespace-nowrap ${
+            subTab === "summary"
+              ? "border-mosque text-mosque font-extrabold"
+              : "border-transparent text-nordic/50 hover:text-nordic"
+          }`}
+        >
+          <Icon name="bar_chart" className="h-4.5 w-4.5" />
+          <span>Resumen de Personal</span>
+        </button>
+
+        {/* Tab 2: Personal Activo (Flat list) */}
         <button
           onClick={() => setSubTab("personal")}
-          className={`flex items-center gap-2 px-6 py-3 text-xs md:text-sm font-bold border-b-2 transition-all outline-none cursor-pointer ${
+          className={`flex items-center gap-2 px-6 py-3 text-xs md:text-sm font-bold border-b-2 transition-all outline-none cursor-pointer whitespace-nowrap ${
             subTab === "personal"
               ? "border-mosque text-mosque font-extrabold"
               : "border-transparent text-nordic/50 hover:text-nordic"
@@ -150,9 +189,11 @@ export default function RequirementTable({
           <Icon name="group" className="h-4.5 w-4.5" />
           <span>Personal Activo</span>
         </button>
+
+        {/* Tab 3: Requerimientos */}
         <button
           onClick={() => setSubTab("requirements")}
-          className={`flex items-center gap-2 px-6 py-3 text-xs md:text-sm font-bold border-b-2 transition-all outline-none cursor-pointer ${
+          className={`flex items-center gap-2 px-6 py-3 text-xs md:text-sm font-bold border-b-2 transition-all outline-none cursor-pointer whitespace-nowrap ${
             subTab === "requirements"
               ? "border-mosque text-mosque font-extrabold"
               : "border-transparent text-nordic/50 hover:text-nordic"
@@ -205,20 +246,20 @@ export default function RequirementTable({
           </div>
         </div>
 
-        {/* CSV Export Button */}
+        {/* Export Button */}
         <button
           onClick={handleExportCSV}
           className="flex items-center justify-center gap-1.5 text-xs font-bold text-mosque hover:text-mosque/80 hover:underline cursor-pointer outline-none transition-colors border border-mosque/10 px-4 py-2 rounded-lg bg-clear-day/40 w-full lg:w-auto"
         >
           <Icon name="download" className="h-4 w-4" />
-          <span>Exportar Resumen CSV</span>
+          <span>Exportar CSV</span>
         </button>
       </div>
 
-      {/* Main Grid divided by Tramo */}
-      <div className="space-y-8">
-        {subTab === "personal" ? (
-          /* ==================== ACTIVE STAFF SUMMARY ==================== */
+      {/* Main Content Area */}
+      <div className="space-y-6">
+        {subTab === "summary" ? (
+          /* ==================== 1. RESUMEN DE PERSONAL TAB ==================== */
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {Object.keys(activeGrouped).length === 0 ? (
               <div className="col-span-full bg-white border border-nordic/10 p-12 text-center rounded-xl shadow-sm text-nordic/40 font-semibold text-sm">
@@ -230,7 +271,6 @@ export default function RequirementTable({
                   key={tramoName}
                   className="bg-white border border-nordic/10 rounded-xl shadow-sm overflow-hidden flex flex-col"
                 >
-                  {/* Tramo Header */}
                   <div className="bg-nordic text-clear-day px-5 py-4 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-2">
                       <Icon name="lan" className="h-5 w-5 text-hint-of-green" />
@@ -243,7 +283,6 @@ export default function RequirementTable({
                     </span>
                   </div>
 
-                  {/* Capataces List */}
                   <div className="divide-y divide-nordic/5 flex-1">
                     <div className="px-5 py-2.5 bg-clear-day/40 flex justify-between text-[9px] font-extrabold text-nordic/45 uppercase tracking-wider">
                       <span>Capataz / Encargado</span>
@@ -265,7 +304,7 @@ export default function RequirementTable({
                               {capatazName}
                             </span>
                             <p className="text-[10px] text-nordic/40 font-bold uppercase tracking-wider mt-0.5">
-                              Haga clic para ver detalle
+                              Haga clic para ver desglose por puesto
                             </p>
                           </div>
                         </div>
@@ -279,8 +318,178 @@ export default function RequirementTable({
               ))
             )}
           </div>
+        ) : subTab === "personal" ? (
+          /* ==================== 2. PERSONAL ACTIVO (FLAT TABLE) TAB ==================== */
+          <div className="bg-white border border-nordic/10 rounded-xl shadow-sm overflow-hidden">
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-clear-day border-b border-nordic/10">
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
+                      Código
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
+                      DNI
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
+                      Apellidos y Nombres
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
+                      Cargo / Puesto
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
+                      Capataz / Encargado
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
+                      Frente (Tramo)
+                    </th>
+                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase text-right">
+                      Fec. Ingreso
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-nordic/5">
+                  {paginatedActiveStaff.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-nordic/50 font-semibold">
+                        No se encontraron trabajadores activos en esta búsqueda.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedActiveStaff.map((s) => (
+                      <tr key={s.id} className="hover:bg-clear-day/30 transition-colors">
+                        <td className="px-6 py-4 font-mono text-xs font-semibold text-nordic/85">
+                          {s.codigo || "-"}
+                        </td>
+                        <td className="px-6 py-4 text-xs font-semibold text-nordic/70">
+                          {s.dni || "-"}
+                        </td>
+                        <td className="px-6 py-4 text-xs font-bold text-nordic">
+                          {s.nombres}
+                        </td>
+                        <td className="px-6 py-4 text-xs text-nordic font-semibold">
+                          <span className="bg-clear-day px-2 py-0.5 rounded text-nordic/85 border border-nordic/10 text-[11px] font-bold">
+                            {s.cargo}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-xs text-nordic/65 font-semibold">
+                          {s.capataz || "-"}
+                        </td>
+                        <td className="px-6 py-4 text-xs text-nordic/65 font-semibold font-sf-pro">
+                          {s.tramo}
+                        </td>
+                        <td className="px-6 py-4 text-xs text-nordic/60 font-semibold text-right">
+                          {s.fecing
+                            ? new Date(s.fecing).toLocaleDateString("es-ES", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : "-"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="block md:hidden divide-y divide-nordic/5">
+              {paginatedActiveStaff.length === 0 ? (
+                <div className="px-6 py-8 text-center text-nordic/50 font-semibold text-sm">
+                  No se encontraron trabajadores activos.
+                </div>
+              ) : (
+                paginatedActiveStaff.map((s) => (
+                  <div key={s.id} className="p-4 space-y-2 bg-white hover:bg-clear-day/10 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-bold text-nordic/80">
+                        Cód: {s.codigo || "-"}
+                      </span>
+                      <span className="text-[11px] text-nordic/50 font-semibold">
+                        DNI: {s.dni || "-"}
+                      </span>
+                    </div>
+
+                    <p className="text-sm font-extrabold text-nordic leading-tight">
+                      {s.nombres}
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="bg-clear-day px-2 py-0.5 rounded text-nordic border border-nordic/10 text-[10px] font-bold">
+                        {s.cargo}
+                      </span>
+                      <span className="text-[10px] text-nordic/60 font-semibold">
+                        &bull; {s.tramo}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-2 border-t border-nordic/5 text-[11px] text-nordic/50">
+                      <span>Capataz: {s.capataz || "-"}</span>
+                      <span>
+                        F. Ingreso:{" "}
+                        {s.fecing
+                          ? new Date(s.fecing).toLocaleDateString("es-ES", {
+                              year: "2-digit",
+                              month: "2-digit",
+                              day: "2-digit",
+                            })
+                          : "-"}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="bg-clear-day px-6 py-4 flex flex-col sm:flex-row items-center justify-between border-t border-nordic/10 text-xs text-nordic/60 font-semibold gap-3">
+              <span>
+                Mostrando {startPersonalItem} a {endPersonalItem} de {totalPersonalCount} trabajadores
+              </span>
+              <div className="flex gap-1.5">
+                <button
+                  disabled={personalPage <= 1}
+                  onClick={() => setPersonalPage(personalPage - 1)}
+                  className="p-1 border border-nordic/15 rounded bg-white hover:bg-clear-day transition-colors cursor-pointer text-nordic/50 hover:text-nordic outline-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Icon name="chevron_left" className="h-4 w-4" />
+                </button>
+                {Array.from({ length: totalPersonalPages }, (_, i) => i + 1)
+                  .filter((p) => Math.abs(p - personalPage) < 3 || p === 1 || p === totalPersonalPages)
+                  .map((p, idx, arr) => {
+                    const prev = arr[idx - 1];
+                    const showEllipsis = prev && p - prev > 1;
+                    return (
+                      <React.Fragment key={p}>
+                        {showEllipsis && <span className="px-1.5 self-end">...</span>}
+                        <button
+                          onClick={() => setPersonalPage(p)}
+                          className={`px-2.5 py-1 border rounded font-bold text-[11px] outline-none cursor-pointer transition-colors ${
+                            p === personalPage
+                              ? "bg-mosque text-clear-day border-mosque"
+                              : "bg-white border-nordic/15 text-nordic/70 hover:bg-clear-day"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+                <button
+                  disabled={personalPage >= totalPersonalPages}
+                  onClick={() => setPersonalPage(personalPage + 1)}
+                  className="p-1 border border-nordic/15 rounded bg-white hover:bg-clear-day transition-colors cursor-pointer text-nordic/50 hover:text-nordic outline-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Icon name="chevron_right" className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
         ) : (
-          /* ==================== REQUIREMENTS SUMMARY ==================== */
+          /* ==================== 3. REQUERIMIENTOS TAB ==================== */
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {Object.keys(reqGrouped).length === 0 ? (
               <div className="col-span-full bg-white border border-nordic/10 p-12 text-center rounded-xl shadow-sm text-nordic/40 font-semibold text-sm">
@@ -292,7 +501,6 @@ export default function RequirementTable({
                   key={tramoName}
                   className="bg-white border border-nordic/10 rounded-xl shadow-sm overflow-hidden flex flex-col"
                 >
-                  {/* Tramo Header */}
                   <div className="bg-nordic text-clear-day px-5 py-4 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-2">
                       <Icon name="assignment" className="h-5 w-5 text-hint-of-green" />
@@ -305,7 +513,6 @@ export default function RequirementTable({
                     </span>
                   </div>
 
-                  {/* Solicitudes List */}
                   <div className="divide-y divide-nordic/5 flex-1">
                     <div className="px-5 py-2.5 bg-clear-day/40 flex justify-between text-[9px] font-extrabold text-nordic/45 uppercase tracking-wider">
                       <span>Nro. Solicitud & Capataz</span>

@@ -28,24 +28,10 @@ export default function StatsOverview({
       icon: "assignment_ind",
       textColor: "text-mosque",
     },
-    {
-      label: "Frentes Activos",
-      value: tramoCount,
-      isHighlighted: false,
-      icon: "lan",
-      textColor: "text-blue-600",
-    },
-    {
-      label: "Puestos Existentes",
-      value: cargoCount,
-      isHighlighted: false,
-      icon: "work",
-      textColor: "text-amber-600",
-    },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
       {stats.map((stat, index) => (
         <div
           key={index}
