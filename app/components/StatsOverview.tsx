@@ -6,6 +6,7 @@ interface StatsOverviewProps {
   totalRequirementsCount: number;
   tramoCount: number;
   cargoCount: number;
+  isMaterials?: boolean;
 }
 
 export default function StatsOverview({
@@ -13,22 +14,39 @@ export default function StatsOverview({
   totalRequirementsCount,
   tramoCount,
   cargoCount,
+  isMaterials = false,
 }: StatsOverviewProps) {
-  const stats = [
-    {
-      label: "Personal Activo",
-      value: activeStaffCount,
-      isHighlighted: true,
-      icon: "group",
-    },
-    {
-      label: "Personal Requerido",
-      value: totalRequirementsCount,
-      isHighlighted: false,
-      icon: "assignment_ind",
-      textColor: "text-mosque",
-    },
-  ];
+  const stats = isMaterials
+    ? [
+        {
+          label: "Solicitudes de Materiales",
+          value: activeStaffCount,
+          isHighlighted: true,
+          icon: "widgets",
+        },
+        {
+          label: "Ítems Aprobados",
+          value: totalRequirementsCount,
+          isHighlighted: false,
+          icon: "task_alt",
+          textColor: "text-mosque",
+        },
+      ]
+    : [
+        {
+          label: "Personal Activo",
+          value: activeStaffCount,
+          isHighlighted: true,
+          icon: "group",
+        },
+        {
+          label: "Personal Requerido",
+          value: totalRequirementsCount,
+          isHighlighted: false,
+          icon: "assignment_ind",
+          textColor: "text-mosque",
+        },
+      ];
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">

@@ -9,12 +9,15 @@ import RequirementTable from "./components/RequirementTable";
 import RequirementModal from "./components/RequirementModal";
 import DetailModal from "./components/DetailModal";
 import SolicitudModal from "./components/SolicitudModal";
-import { PersonalAssa } from "./components/types";
+import MaterialsPanel from "./components/MaterialsPanel";
+import MaterialsModal from "./components/MaterialsModal";
+import { PersonalAssa, MaterialRequirement } from "./components/types";
 import { createPersonalRequirementAction, promoteRequirementAction } from "./actions";
 
 interface HomeClientProps {
   activeTab: string;
   allPersonal: PersonalAssa[];
+  materials: MaterialRequirement[];
   searchQuery: string;
   existingTramos: string[];
   existingCargos: string[];
@@ -27,6 +30,7 @@ interface HomeClientProps {
 export default function HomeClient({
   activeTab,
   allPersonal,
+  materials,
   searchQuery,
   existingTramos,
   existingCargos,
@@ -48,8 +52,10 @@ export default function HomeClient({
   const [activeSolicitud, setActiveSolicitud] = useState<string | null>(null);
   const [activeSolicitudTramo, setActiveSolicitudTramo] = useState<string | null>(null);
 
+  // States for Materials Solicitud Detail Modal
+  const [activeMaterialSolicitud, setActiveMaterialSolicitud] = useState<string | null>(null);
+
   const handleTabChange = (tabId: string) => {
-    // Only "personal" tab is left in sidebar
     const params = new URLSearchParams();
     params.set("tab", tabId);
     router.push(`/?${params.toString()}`);
@@ -89,7 +95,7 @@ export default function HomeClient({
     }
   };
 
-  // Derive distinct capataces list from all active staff to feed the dropdown in SolicitudModal
+  // Derive distinct capataces list from active staff to feed the dropdown in SolicitudModal
   const existingCapataces = Array.from(
     new Set(
       allPersonal
@@ -127,6 +133,10 @@ export default function HomeClient({
         )
       : [];
 
+  // Calculate Materials stats
+  const totalMaterialRequests = Array.from(new Set(materials.map((m) => m.codigoRequerimiento))).length;
+  const approvedMaterialItems = materials.filter((m) => m.estado === "Aprobado").length;
+
   return (
     <div className="min-h-screen bg-clear-day flex flex-col antialiased">
       {/* Sidebar Navigation */}
@@ -147,39 +157,78 @@ export default function HomeClient({
       {/* Main Canvas Area */}
       <main className="flex-1 ml-0 md:ml-64 p-4 md:p-8 transition-all duration-300">
         <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header Title section */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="font-sf-pro text-2xl md:text-3xl font-extrabold text-nordic tracking-tight">
-                Control de Personal ASSA
-              </h1>
-              <p className="text-xs md:text-sm font-semibold text-nordic/60 mt-1">
-                Visualice el resumen de personal activo por capataz y gestione la activación de requerimientos pendientes.
-              </p>
-            </div>
-          </div>
+          {activeTab === "materials" ? (
+            /* ==================== MATERIALS SECTION ==================== */
+            <>
+              {/* Header Title section */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h1 className="font-sf-pro text-2xl md:text-3xl font-extrabold text-nordic tracking-tight">
+                    Requerimientos de Materiales ASSA
+                  </h1>
+                  <p className="text-xs md:text-sm font-semibold text-nordic/60 mt-1">
+                    Visualización consolidada de solicitudes de materiales e insumos de obra.
+                  </p>
+                </div>
+              </div>
 
-          {/* Stats Metrics Cards */}
-          <StatsOverview
-            activeStaffCount={activeStaffCount}
-            totalRequirementsCount={totalRequirementsCount}
-            tramoCount={tramoCount}
-            cargoCount={cargoCount}
-          />
+              {/* Stats Metrics Cards */}
+              <StatsOverview
+                activeStaffCount={totalMaterialRequests}
+                totalRequirementsCount={approvedMaterialItems}
+                tramoCount={0}
+                cargoCount={0}
+                isMaterials={true}
+              />
 
-          {/* Main Dashboard / Interactive Reports */}
-          <RequirementTable
-            allPersonal={allPersonal}
-            searchQuery={searchQuery}
-            onCapatazClick={(capataz, tramo) => {
-              setActiveDetailCapataz(capataz);
-              setActiveDetailTramo(tramo);
-            }}
-            onSolicitudClick={(solicitud, tramo) => {
-              setActiveSolicitud(solicitud);
-              setActiveSolicitudTramo(tramo);
-            }}
-          />
+              {/* Materials List Panel */}
+              <MaterialsPanel
+                items={materials}
+                searchQuery={searchQuery}
+                onSolicitudClick={(codigoRequerimiento) => {
+                  setActiveMaterialSolicitud(codigoRequerimiento);
+                }}
+              />
+            </>
+          ) : (
+            /* ==================== PERSONAL SECTION ==================== */
+            <>
+              {/* Header Title section */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h1 className="font-sf-pro text-2xl md:text-3xl font-extrabold text-nordic tracking-tight">
+                    Control de Personal ASSA
+                  </h1>
+                  <p className="text-xs md:text-sm font-semibold text-nordic/60 mt-1">
+                    Visualice el resumen de personal activo por capataz y gestione la activación de requerimientos pendientes.
+                  </p>
+                </div>
+              </div>
+
+              {/* Stats Metrics Cards */}
+              <StatsOverview
+                activeStaffCount={activeStaffCount}
+                totalRequirementsCount={totalRequirementsCount}
+                tramoCount={tramoCount}
+                cargoCount={cargoCount}
+                isMaterials={false}
+              />
+
+              {/* Personal List Panel */}
+              <RequirementTable
+                allPersonal={allPersonal}
+                searchQuery={searchQuery}
+                onCapatazClick={(capataz, tramo) => {
+                  setActiveDetailCapataz(capataz);
+                  setActiveDetailTramo(tramo);
+                }}
+                onSolicitudClick={(solicitud, tramo) => {
+                  setActiveSolicitud(solicitud);
+                  setActiveSolicitudTramo(tramo);
+                }}
+              />
+            </>
+          )}
         </div>
       </main>
 
@@ -217,6 +266,14 @@ export default function HomeClient({
         requirements={solicitudRequirements}
         existingCapataces={existingCapataces}
         onPromote={handlePromoteRequirement}
+      />
+
+      {/* Materials Requisition Detail Modal */}
+      <MaterialsModal
+        isOpen={!!activeMaterialSolicitud}
+        onClose={() => setActiveMaterialSolicitud(null)}
+        codigoRequerimiento={activeMaterialSolicitud || ""}
+        items={materials.filter((m) => m.codigoRequerimiento === activeMaterialSolicitud)}
       />
     </div>
   );

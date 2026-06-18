@@ -13,6 +13,7 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose, activeTab, setActiveTab }: SidebarProps) {
   const menuItems = [
     { id: "personal", label: "Personal", icon: "group" },
+    { id: "materials", label: "Requerimiento de Materiales", icon: "widgets" },
   ];
 
   return (

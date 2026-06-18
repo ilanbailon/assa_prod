@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { PersonalAssa, GroupedRequirementReport } from "./components/types";
+import { PersonalAssa, GroupedRequirementReport, MaterialRequirement } from "./components/types";
 
 // Helper to map DB row to client PersonalAssa
 function mapPersonalToClient(row: any): PersonalAssa {
@@ -413,6 +413,65 @@ export async function getExistingTramosAction() {
     return Array.from(tramosSet).sort((a, b) => a.localeCompare(b));
   } catch (error) {
     console.error("Error in getExistingTramosAction:", error);
+    return [];
+  }
+}
+
+// Helper to map DB row to client MaterialRequirement
+function mapMaterialToClient(row: any): MaterialRequirement {
+  return {
+    id: row.id,
+    codigoRequerimiento: row.codigo_requerimiento,
+    codigoRecurso: row.codigo_recurso,
+    recurso: row.recurso,
+    unidad: row.unidad,
+    cantidad: row.cantidad,
+    partidaControlCode: row.partida_control_code,
+    partidaControl: row.partida_control,
+    estado: row.estado,
+    cantidadOriginal: row.cantidad_original,
+    cantidadCotizacion: row.cantidad_cotizacion,
+    cantidadOrdenCompra: row.cantidad_orden_compra,
+    cantidadAlmacen: row.cantidad_almacen,
+    cantidadRecibir: row.cantidad_recibir,
+    cronogramaEntrega: row.cronograma_entrega,
+    codigoAlternoPc: row.codigo_alterno_pc,
+  };
+}
+
+// Fetch all material requirements from Supabase
+export async function getAllMaterialRequirementsAction(): Promise<MaterialRequirement[]> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    console.error("Credentials error: Supabase variables are not set in the environment.");
+    return [];
+  }
+
+  const url = `${supabaseUrl}/rest/v1/material_requirements?order=codigo_requerimiento.asc,id.asc`;
+
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": anonKey,
+        "Authorization": `Bearer ${anonKey}`,
+      },
+      next: { revalidate: 0 }
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("Supabase Rest API getAllMaterialRequirementsAction fetch failed:", errText);
+      return [];
+    }
+
+    const data = await res.json();
+    return data.map(mapMaterialToClient);
+  } catch (error) {
+    console.error("Error in getAllMaterialRequirementsAction:", error);
     return [];
   }
 }

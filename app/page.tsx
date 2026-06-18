@@ -1,10 +1,11 @@
 import React from "react";
 import HomeClient from "./home-client";
-import { PersonalAssa } from "./components/types";
+import { PersonalAssa, MaterialRequirement } from "./components/types";
 import {
   getAllPersonalAction,
   getExistingCargosAction,
   getExistingTramosAction,
+  getAllMaterialRequirementsAction,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,9 @@ export default async function Home({
   // Fetch all personnel records to perform groupings dynamically
   const allPersonal: PersonalAssa[] = await getAllPersonalAction();
 
+  // Fetch all material requirements
+  const materials: MaterialRequirement[] = await getAllMaterialRequirementsAction();
+
   // Calculate stats for overview
   const activeStaffCount = allPersonal.filter((p) => p.estado === "Activo").length;
   const totalRequirementsCount = allPersonal.filter((p) => p.estado === "Requerimiento").length;
@@ -36,6 +40,7 @@ export default async function Home({
     <HomeClient
       activeTab={tab}
       allPersonal={allPersonal}
+      materials={materials}
       searchQuery={search}
       existingTramos={existingTramos}
       existingCargos={existingCargos}

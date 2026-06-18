@@ -20,3 +20,23 @@ export interface GroupedRequirementReport {
   cantidad: number;
   fechaSolicitud?: string | null;
 }
+
+export interface MaterialRequirement {
+  id: number;
+  codigoRequerimiento: string;
+  codigoRecurso?: string | null;
+  recurso?: string | null;
+  unidad?: string | null;
+  cantidad?: number | null;
+  partidaControlCode?: string | null;
+  partidaControl?: string | null;
+  estado?: string | null;
+  cantidadOriginal?: number | null;
+  cantidadCotizacion?: string | null;
+  cantidadOrdenCompra?: string | null;
+  cantidadAlmacen?: string | null;
+  cantidadRecibir?: string | null;
+  cronogramaEntrega?: string | null;
+  codigoAlternoPc?: string | null;
+  createdAt?: string;
+}
