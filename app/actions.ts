@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { PersonalAssa, GroupedRequirementReport, MaterialRequirement } from "./components/types";
+import { PersonalAssa, GroupedRequirementReport, MaterialRequirement, MaterialReceipt } from "./components/types";
 
 // Helper to map DB row to client PersonalAssa
 function mapPersonalToClient(row: any): PersonalAssa {
@@ -436,10 +436,22 @@ function mapMaterialToClient(row: any): MaterialRequirement {
     cantidadRecibir: row.cantidad_recibir,
     cronogramaEntrega: row.cronograma_entrega,
     codigoAlternoPc: row.codigo_alterno_pc,
+    fechaPedido: row.fecha_pedido,
+    receipts: [],
   };
 }
 
-// Fetch all material requirements from Supabase
+// Helper to map DB row to client MaterialReceipt
+function mapReceiptToClient(row: any): MaterialReceipt {
+  return {
+    id: row.id,
+    materialRequirementId: row.material_requirement_id,
+    cantidad: typeof row.cantidad === 'number' ? row.cantidad : parseFloat(row.cantidad) || 0,
+    fecha: row.fecha,
+  };
+}
+
+// Fetch all material requirements from Supabase (along with their receipts)
 export async function getAllMaterialRequirementsAction(): Promise<MaterialRequirement[]> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.SUPABASE_ANON_KEY;
@@ -449,10 +461,11 @@ export async function getAllMaterialRequirementsAction(): Promise<MaterialRequir
     return [];
   }
 
-  const url = `${supabaseUrl}/rest/v1/material_requirements?order=codigo_requerimiento.asc,id.asc`;
+  const reqUrl = `${supabaseUrl}/rest/v1/material_requirements?order=codigo_requerimiento.asc,id.asc`;
+  const recUrl = `${supabaseUrl}/rest/v1/material_receipts?order=fecha.asc,id.asc`;
 
   try {
-    const res = await fetch(url, {
+    const reqRes = await fetch(reqUrl, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -462,16 +475,252 @@ export async function getAllMaterialRequirementsAction(): Promise<MaterialRequir
       next: { revalidate: 0 }
     });
 
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error("Supabase Rest API getAllMaterialRequirementsAction fetch failed:", errText);
+    if (!reqRes.ok) {
+      const errText = await reqRes.text();
+      console.error("Supabase Rest API getAllMaterialRequirementsAction req fetch failed:", errText);
       return [];
     }
 
-    const data = await res.json();
-    return data.map(mapMaterialToClient);
+    const reqData = await reqRes.json();
+    const requirements: MaterialRequirement[] = reqData.map(mapMaterialToClient);
+
+    const recRes = await fetch(recUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": anonKey,
+        "Authorization": `Bearer ${anonKey}`,
+      },
+      next: { revalidate: 0 }
+    });
+
+    let receipts: MaterialReceipt[] = [];
+    if (recRes.ok) {
+      const recData = await recRes.json();
+      receipts = recData.map(mapReceiptToClient);
+    }
+
+    // Join and calculate arrived quantities dynamically
+    requirements.forEach((req) => {
+      req.receipts = receipts.filter((r) => r.materialRequirementId === req.id);
+      if (req.receipts.length > 0) {
+        const sum = req.receipts.reduce((acc, r) => acc + r.cantidad, 0);
+        req.cantidadAlmacen = sum.toString();
+      }
+    });
+
+    return requirements;
   } catch (error) {
     console.error("Error in getAllMaterialRequirementsAction:", error);
     return [];
+  }
+}
+
+// Update the arrived quantity of a material requirement in Supabase
+export async function updateMaterialAlmacenAction(id: number, cantidadAlmacen: string) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    return { success: false, error: "Supabase credentials are missing from environment." };
+  }
+
+  try {
+    const res = await fetch(`${supabaseUrl}/rest/v1/material_requirements?id=eq.${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": anonKey,
+        "Authorization": `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify({
+        cantidad_almacen: cantidadAlmacen || null,
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("Supabase Rest API updateMaterialAlmacenAction PATCH failed:", errText);
+      return { success: false, error: errText };
+    }
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error in updateMaterialAlmacenAction:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Update customizable fields in material requirements (e.g. fecha_pedido, partida_control)
+export async function updateMaterialRequirementFieldAction(
+  id: number,
+  fields: {
+    fechaPedido?: string | null;
+    partidaControl?: string | null;
+    partidaControlCode?: string | null;
+  }
+) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    return { success: false, error: "Supabase credentials are missing." };
+  }
+
+  const body: any = {};
+  if (fields.fechaPedido !== undefined) body.fecha_pedido = fields.fechaPedido;
+  if (fields.partidaControl !== undefined) body.partida_control = fields.partidaControl;
+  if (fields.partidaControlCode !== undefined) body.partida_control_code = fields.partidaControlCode;
+
+  try {
+    const res = await fetch(`${supabaseUrl}/rest/v1/material_requirements?id=eq.${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": anonKey,
+        "Authorization": `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      return { success: false, error: errText };
+    }
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// Add a partial receipt log to public.material_receipts
+export async function addMaterialReceiptAction(
+  materialRequirementId: number,
+  cantidad: number,
+  fecha: string
+) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    return { success: false, error: "Supabase credentials are missing." };
+  }
+
+  try {
+    const res = await fetch(`${supabaseUrl}/rest/v1/material_receipts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": anonKey,
+        "Authorization": `Bearer ${anonKey}`,
+        "Prefer": "return=representation",
+      },
+      body: JSON.stringify({
+        material_requirement_id: materialRequirementId,
+        cantidad,
+        fecha: fecha || null,
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      return { success: false, error: errText };
+    }
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// Delete a partial receipt log from public.material_receipts
+export async function deleteMaterialReceiptAction(id: number) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    return { success: false, error: "Supabase credentials are missing." };
+  }
+
+  try {
+    const res = await fetch(`${supabaseUrl}/rest/v1/material_receipts?id=eq.${id}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": anonKey,
+        "Authorization": `Bearer ${anonKey}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      return { success: false, error: errText };
+    }
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// Create multiple materials at once for a new requisition code
+export async function createBulkMaterialRequirementsAction(
+  codigoRequerimiento: string,
+  items: Array<{
+    codigoRecurso?: string | null;
+    recurso: string;
+    unidad: string;
+    cantidad: number;
+    partidaControlCode?: string | null;
+    partidaControl?: string | null;
+    fechaPedido?: string | null;
+  }>
+) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    return { success: false, error: "Supabase credentials are missing." };
+  }
+
+  const dbRows = items.map((item) => ({
+    codigo_requerimiento: codigoRequerimiento,
+    codigo_recurso: item.codigoRecurso || null,
+    recurso: item.recurso,
+    unidad: item.unidad,
+    cantidad: item.cantidad,
+    partida_control_code: item.partidaControlCode || null,
+    partida_control: item.partidaControl || null,
+    fecha_pedido: item.fechaPedido || null,
+    estado: "Pendiente",
+    cantidad_almacen: "0",
+  }));
+
+  try {
+    const res = await fetch(`${supabaseUrl}/rest/v1/material_requirements`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": anonKey,
+        "Authorization": `Bearer ${anonKey}`,
+        "Prefer": "return=representation",
+      },
+      body: JSON.stringify(dbRows),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      return { success: false, error: errText };
+    }
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }

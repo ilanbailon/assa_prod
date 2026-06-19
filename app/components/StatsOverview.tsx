@@ -25,10 +25,10 @@ export default function StatsOverview({
           icon: "widgets",
         },
         {
-          label: "Ítems Aprobados",
-          value: totalRequirementsCount,
+          label: "Insumos Recibidos en Almacén",
+          value: `${totalRequirementsCount} de ${cargoCount}`,
           isHighlighted: false,
-          icon: "task_alt",
+          icon: "warehouse",
           textColor: "text-mosque",
         },
       ]

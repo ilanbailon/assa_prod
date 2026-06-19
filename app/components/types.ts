@@ -21,6 +21,14 @@ export interface GroupedRequirementReport {
   fechaSolicitud?: string | null;
 }
 
+export interface MaterialReceipt {
+  id: number;
+  materialRequirementId: number;
+  cantidad: number;
+  fecha: string;
+  createdAt?: string;
+}
+
 export interface MaterialRequirement {
   id: number;
   codigoRequerimiento: string;
@@ -38,5 +46,7 @@ export interface MaterialRequirement {
   cantidadRecibir?: string | null;
   cronogramaEntrega?: string | null;
   codigoAlternoPc?: string | null;
+  fechaPedido?: string | null;
+  receipts?: MaterialReceipt[];
   createdAt?: string;
 }

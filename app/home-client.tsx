@@ -10,7 +10,7 @@ import RequirementModal from "./components/RequirementModal";
 import DetailModal from "./components/DetailModal";
 import SolicitudModal from "./components/SolicitudModal";
 import MaterialsPanel from "./components/MaterialsPanel";
-import MaterialsModal from "./components/MaterialsModal";
+import AddMaterialRequisitionModal from "./components/AddMaterialRequisitionModal";
 import { PersonalAssa, MaterialRequirement } from "./components/types";
 import { createPersonalRequirementAction, promoteRequirementAction } from "./actions";
 
@@ -43,6 +43,7 @@ export default function HomeClient({
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRequirementModalOpen, setIsRequirementModalOpen] = useState(false);
+  const [isAddMaterialModalOpen, setIsAddMaterialModalOpen] = useState(false);
 
   // States for Active Staff Capataz Detail Modal
   const [activeDetailCapataz, setActiveDetailCapataz] = useState<string | null>(null);
@@ -135,7 +136,7 @@ export default function HomeClient({
 
   // Calculate Materials stats
   const totalMaterialRequests = Array.from(new Set(materials.map((m) => m.codigoRequerimiento))).length;
-  const approvedMaterialItems = materials.filter((m) => m.estado === "Aprobado").length;
+  const arrivedMaterialItems = materials.filter((m) => (parseFloat(m.cantidadAlmacen || "0") || 0) > 0).length;
 
   return (
     <div className="min-h-screen bg-clear-day flex flex-col antialiased">
@@ -150,7 +151,13 @@ export default function HomeClient({
       {/* Top Header Bar */}
       <TopBar
         onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-        onAddClick={() => setIsRequirementModalOpen(true)}
+        onAddClick={() => {
+          if (activeTab === "materials") {
+            setIsAddMaterialModalOpen(true);
+          } else {
+            setIsRequirementModalOpen(true);
+          }
+        }}
         searchQuery={searchQuery}
       />
 
@@ -175,9 +182,9 @@ export default function HomeClient({
               {/* Stats Metrics Cards */}
               <StatsOverview
                 activeStaffCount={totalMaterialRequests}
-                totalRequirementsCount={approvedMaterialItems}
+                totalRequirementsCount={arrivedMaterialItems}
                 tramoCount={0}
-                cargoCount={0}
+                cargoCount={materials.length}
                 isMaterials={true}
               />
 
@@ -185,9 +192,6 @@ export default function HomeClient({
               <MaterialsPanel
                 items={materials}
                 searchQuery={searchQuery}
-                onSolicitudClick={(codigoRequerimiento) => {
-                  setActiveMaterialSolicitud(codigoRequerimiento);
-                }}
               />
             </>
           ) : (
@@ -268,12 +272,10 @@ export default function HomeClient({
         onPromote={handlePromoteRequirement}
       />
 
-      {/* Materials Requisition Detail Modal */}
-      <MaterialsModal
-        isOpen={!!activeMaterialSolicitud}
-        onClose={() => setActiveMaterialSolicitud(null)}
-        codigoRequerimiento={activeMaterialSolicitud || ""}
-        items={materials.filter((m) => m.codigoRequerimiento === activeMaterialSolicitud)}
+      {/* Add Material Requisition Modal */}
+      <AddMaterialRequisitionModal
+        isOpen={isAddMaterialModalOpen}
+        onClose={() => setIsAddMaterialModalOpen(false)}
       />
     </div>
   );
