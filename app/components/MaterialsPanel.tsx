@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import PdfViewerModal from "./PdfViewerModal";
 import {
-  updateMaterialAlmacenAction,
   updateMaterialRequirementFieldAction,
   addMaterialReceiptAction,
   deleteMaterialReceiptAction,
@@ -24,7 +23,6 @@ interface MaterialsPanelProps {
 // Editable Row for Desktop Insumos (without Fecha Pedido column)
 interface EditableAlmacenRowProps {
   item: MaterialRequirement;
-  onSaveAlmacen: (id: number, value: string) => Promise<boolean>;
   onSaveField: (id: number, fields: any) => Promise<boolean>;
   onAddReceipt: (materialRequirementId: number, qty: number, date: string) => Promise<boolean>;
   onDeleteReceipt: (id: number) => Promise<boolean>;
@@ -32,15 +30,12 @@ interface EditableAlmacenRowProps {
 
 function EditableAlmacenRow({
   item,
-  onSaveAlmacen,
   onSaveField,
   onAddReceipt,
   onDeleteReceipt,
 }: EditableAlmacenRowProps) {
   // En Almacén Qty states
   const [almVal, setAlmVal] = useState(item.cantidadAlmacen || "0");
-  const [isEditingAlm, setIsEditingAlm] = useState(false);
-  const [isSavingAlm, setIsSavingAlm] = useState(false);
 
   // Partida Code states
   const [partidaCodeVal, setPartidaCodeVal] = useState(item.partidaControlCode || "");
@@ -57,6 +52,8 @@ function EditableAlmacenRow({
   const [newReceiptQty, setNewReceiptQty] = useState("");
   const [newReceiptDate, setNewReceiptDate] = useState(new Date().toISOString().slice(0, 10));
   const [isSavingReceipt, setIsSavingReceipt] = useState(false);
+  const [deletingReceiptId, setDeletingReceiptId] = useState<number | null>(null);
+
 
   useEffect(() => {
     setAlmVal(item.cantidadAlmacen || "0");
@@ -69,19 +66,6 @@ function EditableAlmacenRow({
   useEffect(() => {
     setPartidaDescVal(item.partidaControl || "");
   }, [item.partidaControl]);
-
-  // Save Almacen Qty
-  const handleSaveAlm = async () => {
-    const trimmed = almVal.trim();
-    if (trimmed === (item.cantidadAlmacen || "0")) {
-      setIsEditingAlm(false);
-      return;
-    }
-    setIsSavingAlm(true);
-    const success = await onSaveAlmacen(item.id, trimmed);
-    setIsSavingAlm(false);
-    if (success) setIsEditingAlm(false);
-  };
 
   // Save Partida Code
   const handleSavePartidaCode = async () => {
@@ -160,45 +144,25 @@ function EditableAlmacenRow({
         {/* Cantidad Solicitada */}
         <td className="px-3 py-2.5 text-right font-extrabold text-nordic">{item.cantidad?.toLocaleString()}</td>
 
-        {/* En Almacén (Editable Direct or updated by Receipts) */}
+        {/* En Almacén (Only updated by Receipts) */}
         <td className="px-3 py-2.5 text-center min-w-[100px]">
-          {numReceipts > 0 ? (
-            <div
-              onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
-              className="flex items-center justify-center gap-1 font-extrabold text-mosque hover:underline cursor-pointer"
-              title="Sumado por historial de entregas parciales"
-            >
-              <span>{almVal}</span>
-              <Icon name="history" className="h-3 w-3" />
-            </div>
-          ) : isEditingAlm ? (
-            <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-              <input
-                type="text"
-                value={almVal}
-                onChange={(e) => setAlmVal(e.target.value)}
-                onBlur={handleSaveAlm}
-                onKeyDown={(e) => e.key === "Enter" && handleSaveAlm()}
-                disabled={isSavingAlm}
-                autoFocus
-                className="w-16 bg-white border border-mosque text-xs font-bold text-nordic text-center py-0.5 rounded outline-none"
-              />
-              {isSavingAlm && (
-                <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-mosque border-t-transparent rounded-full" />
-              )}
-            </div>
-          ) : (
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsEditingAlm(true);
-              }}
-              className="group/cell flex items-center justify-center gap-1 cursor-pointer hover:bg-mosque/5 hover:text-mosque px-2 py-0.5 rounded border border-dashed border-transparent hover:border-mosque/35 transition-all font-extrabold text-nordic"
-            >
-              <span>{almVal}</span>
-              <Icon name="edit" className="h-3 w-3 text-nordic/30 group-hover/cell:text-mosque opacity-0 group-hover/cell:opacity-100 transition-all" />
-            </div>
-          )}
+          <div
+            onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
+            className={`flex items-center justify-center gap-1 font-extrabold cursor-pointer hover:underline ${
+              numReceipts > 0 ? "text-mosque" : "text-nordic hover:text-mosque"
+            }`}
+            title={
+              numReceipts > 0
+                ? "Sumado por historial de entregas parciales. Click para ver historial."
+                : "Click para registrar entregas parciales."
+            }
+          >
+            <span>{almVal}</span>
+            <Icon
+              name="history"
+              className={`h-3 w-3 ${numReceipts > 0 ? "text-mosque" : "text-nordic/30"}`}
+            />
+          </div>
         </td>
 
         {/* Estado badge */}
@@ -327,17 +291,39 @@ function EditableAlmacenRow({
                           <span className="font-extrabold text-mosque">
                             +{r.cantidad.toLocaleString()} {item.unidad}
                           </span>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              if (confirm("¿Está seguro de eliminar esta entrega parcial?")) {
-                                await onDeleteReceipt(r.id);
-                              }
-                            }}
-                            className="text-red-500 hover:text-red-700 p-0.5 cursor-pointer"
-                          >
-                            <Icon name="delete" className="h-3.5 w-3.5" />
-                          </button>
+                          {deletingReceiptId === r.id ? (
+                            <div className="flex items-center gap-1 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-lg">
+                              <span className="text-[9px] font-bold text-red-700 mr-1 uppercase">¿Eliminar?</span>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await onDeleteReceipt(r.id);
+                                  setDeletingReceiptId(null);
+                                }}
+                                className="text-red-600 hover:text-red-800 p-0.5 cursor-pointer flex items-center justify-center"
+                                title="Confirmar eliminación"
+                              >
+                                <Icon name="check_circle" className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeletingReceiptId(null)}
+                                className="text-nordic/50 hover:text-nordic p-0.5 cursor-pointer flex items-center justify-center"
+                                title="Cancelar"
+                              >
+                                <Icon name="close" className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setDeletingReceiptId(r.id)}
+                              className="text-red-500 hover:text-red-700 p-0.5 cursor-pointer flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+                              title="Eliminar entrega parcial"
+                            >
+                              <Icon name="delete" className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -716,22 +702,6 @@ export default function MaterialsPanel({
     reader.readAsArrayBuffer(file);
   };
 
-  const handleSaveAlmacen = async (id: number, value: string) => {
-    try {
-      const res = await updateMaterialAlmacenAction(id, value);
-      if (res.success) {
-        router.refresh();
-        return true;
-      } else {
-        alert("Error al actualizar la cantidad: " + res.error);
-        return false;
-      }
-    } catch (err: any) {
-      alert("Error: " + err.message);
-      return false;
-    }
-  };
-
   const handleSaveField = async (id: number, fields: any) => {
     try {
       const res = await updateMaterialRequirementFieldAction(id, fields);
@@ -1074,7 +1044,6 @@ export default function MaterialsPanel({
                                     <EditableAlmacenRow
                                       key={item.id}
                                       item={item}
-                                      onSaveAlmacen={handleSaveAlmacen}
                                       onSaveField={handleSaveField}
                                       onAddReceipt={handleAddReceipt}
                                       onDeleteReceipt={handleDeleteReceipt}
