@@ -47,6 +47,7 @@ export interface MaterialRequirement {
   cronogramaEntrega?: string | null;
   codigoAlternoPc?: string | null;
   fechaPedido?: string | null;
+  pdfUrl?: string | null;
   receipts?: MaterialReceipt[];
   createdAt?: string;
 }

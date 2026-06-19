@@ -437,6 +437,7 @@ function mapMaterialToClient(row: any): MaterialRequirement {
     cronogramaEntrega: row.cronograma_entrega,
     codigoAlternoPc: row.codigo_alterno_pc,
     fechaPedido: row.fecha_pedido,
+    pdfUrl: row.pdf_url,
     receipts: [],
   };
 }
@@ -724,3 +725,237 @@ export async function createBulkMaterialRequirementsAction(
     return { success: false, error: error.message };
   }
 }
+
+// Update the manual order date for all material items in a requisition
+export async function updateRequisitionFechaPedidoAction(
+  codigoRequerimiento: string,
+  fechaPedido: string | null
+) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    return { success: false, error: "Supabase credentials are missing." };
+  }
+
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/material_requirements?codigo_requerimiento=eq.${codigoRequerimiento}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": anonKey,
+          "Authorization": `Bearer ${anonKey}`,
+        },
+        body: JSON.stringify({
+          fecha_pedido: fechaPedido || null,
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("updateRequisitionFechaPedidoAction PATCH failed:", errText);
+      return { success: false, error: errText };
+    }
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error in updateRequisitionFechaPedidoAction:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Upload a PDF document to Supabase Storage and link it to the requisition items
+export async function uploadRequisitionPdfAction(
+  codigoRequerimiento: string,
+  fileName: string,
+  base64Data: string,
+  mimeType: string
+) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    return { success: false, error: "Supabase credentials are missing." };
+  }
+
+  // 1. Ensure the bucket exists
+  try {
+    await fetch(`${supabaseUrl}/storage/v1/bucket`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": anonKey,
+        "Authorization": `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify({
+        id: "material-requisitions",
+        name: "material-requisitions",
+        public: true,
+      }),
+    });
+  } catch (e) {
+    // Ignore if bucket creation fails (e.g. if it already exists)
+  }
+
+  try {
+    // 2. Decode the base64 content
+    const binaryBuffer = Buffer.from(base64Data, "base64");
+
+    // 3. Upload to Supabase Storage
+    const filePath = `${codigoRequerimiento}/${fileName}`;
+    const uploadUrl = `${supabaseUrl}/storage/v1/object/material-requisitions/${filePath}`;
+
+    const uploadRes = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        "apikey": anonKey,
+        "Authorization": `Bearer ${anonKey}`,
+        "Content-Type": mimeType,
+        "x-upsert": "true",
+      },
+      body: binaryBuffer,
+    });
+
+    if (!uploadRes.ok) {
+      const errText = await uploadRes.text();
+      console.error("Supabase Storage PDF upload failed:", errText);
+      return { success: false, error: errText };
+    }
+
+    // 4. Update the pdf_url field in the material_requirements table for this requisition code
+    const publicUrl = `${supabaseUrl}/storage/v1/object/public/material-requisitions/${filePath}`;
+    const dbRes = await fetch(
+      `${supabaseUrl}/rest/v1/material_requirements?codigo_requerimiento=eq.${codigoRequerimiento}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": anonKey,
+          "Authorization": `Bearer ${anonKey}`,
+        },
+        body: JSON.stringify({
+          pdf_url: publicUrl,
+        }),
+      }
+    );
+
+    if (!dbRes.ok) {
+      const errText = await dbRes.text();
+      console.error("Database update for PDF link failed:", errText);
+      return { success: false, error: errText };
+    }
+
+    revalidatePath("/");
+    return { success: true, url: publicUrl };
+  } catch (error: any) {
+    console.error("Error in uploadRequisitionPdfAction:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Overwrite a material requisition's insumos, preserving any existing fecha_pedido or pdf_url
+export async function overwriteMaterialRequisitionAction(
+  codigoRequerimiento: string,
+  items: Array<{
+    codigoRecurso?: string | null;
+    recurso: string;
+    unidad: string;
+    cantidad: number;
+    partidaControlCode?: string | null;
+    partidaControl?: string | null;
+  }>
+) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    return { success: false, error: "Supabase credentials are missing." };
+  }
+
+  try {
+    // 1. Check if the requisition already exists and fetch its metadata to preserve
+    let existingFechaPedido: string | null = null;
+    let existingPdfUrl: string | null = null;
+
+    const checkUrl = `${supabaseUrl}/rest/v1/material_requirements?codigo_requerimiento=eq.${codigoRequerimiento}&limit=1`;
+    const checkRes = await fetch(checkUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": anonKey,
+        "Authorization": `Bearer ${anonKey}`,
+      },
+    });
+
+    if (checkRes.ok) {
+      const checkData = await checkRes.json();
+      if (checkData && checkData.length > 0) {
+        existingFechaPedido = checkData[0].fecha_pedido || null;
+        existingPdfUrl = checkData[0].pdf_url || null;
+      }
+    }
+
+    // 2. Delete existing items for this requisition
+    const deleteRes = await fetch(
+      `${supabaseUrl}/rest/v1/material_requirements?codigo_requerimiento=eq.${codigoRequerimiento}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": anonKey,
+          "Authorization": `Bearer ${anonKey}`,
+        },
+      }
+    );
+
+    if (!deleteRes.ok) {
+      const errText = await deleteRes.text();
+      console.error("Failed to delete existing items for requisition " + codigoRequerimiento, errText);
+      return { success: false, error: errText };
+    }
+
+    // 3. Map new rows using the preserved metadata
+    const dbRows = items.map((item) => ({
+      codigo_requerimiento: codigoRequerimiento,
+      codigo_recurso: item.codigoRecurso || null,
+      recurso: item.recurso,
+      unidad: item.unidad,
+      cantidad: item.cantidad,
+      partida_control_code: item.partidaControlCode || null,
+      partida_control: item.partidaControl || null,
+      fecha_pedido: existingFechaPedido,
+      pdf_url: existingPdfUrl,
+      estado: "Pendiente",
+      cantidad_almacen: "0",
+    }));
+
+    // 4. Bulk insert the new items
+    const insertRes = await fetch(`${supabaseUrl}/rest/v1/material_requirements`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": anonKey,
+        "Authorization": `Bearer ${anonKey}`,
+        "Prefer": "return=representation",
+      },
+      body: JSON.stringify(dbRows),
+    });
+
+    if (!insertRes.ok) {
+      const errText = await insertRes.text();
+      console.error("Failed to insert overwritten items:", errText);
+      return { success: false, error: errText };
+    }
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error in overwriteMaterialRequisitionAction:", error);
+    return { success: false, error: error.message };
+  }
+}
+

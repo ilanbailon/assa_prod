@@ -1,14 +1,19 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { MaterialRequirement, MaterialReceipt } from "./types";
 import Icon from "./Icon";
 import { useRouter } from "next/navigation";
+import * as XLSX from "xlsx";
+import PdfViewerModal from "./PdfViewerModal";
 import {
   updateMaterialAlmacenAction,
   updateMaterialRequirementFieldAction,
   addMaterialReceiptAction,
   deleteMaterialReceiptAction,
+  updateRequisitionFechaPedidoAction,
+  uploadRequisitionPdfAction,
+  overwriteMaterialRequisitionAction,
 } from "../actions";
 
 interface MaterialsPanelProps {
@@ -16,7 +21,7 @@ interface MaterialsPanelProps {
   searchQuery: string;
 }
 
-// Editable Row for Desktop Insumos
+// Editable Row for Desktop Insumos (without Fecha Pedido column)
 interface EditableAlmacenRowProps {
   item: MaterialRequirement;
   onSaveAlmacen: (id: number, value: string) => Promise<boolean>;
@@ -32,17 +37,10 @@ function EditableAlmacenRow({
   onAddReceipt,
   onDeleteReceipt,
 }: EditableAlmacenRowProps) {
-  const router = useRouter();
-
   // En Almacén Qty states
   const [almVal, setAlmVal] = useState(item.cantidadAlmacen || "0");
   const [isEditingAlm, setIsEditingAlm] = useState(false);
   const [isSavingAlm, setIsSavingAlm] = useState(false);
-
-  // Fecha Pedido states
-  const [fechaVal, setFechaVal] = useState(item.fechaPedido || "");
-  const [isEditingFecha, setIsEditingFecha] = useState(false);
-  const [isSavingFecha, setIsSavingFecha] = useState(false);
 
   // Partida Code states
   const [partidaCodeVal, setPartidaCodeVal] = useState(item.partidaControlCode || "");
@@ -60,14 +58,9 @@ function EditableAlmacenRow({
   const [newReceiptDate, setNewReceiptDate] = useState(new Date().toISOString().slice(0, 10));
   const [isSavingReceipt, setIsSavingReceipt] = useState(false);
 
-  // Sync states with props when they change on the server
   useEffect(() => {
     setAlmVal(item.cantidadAlmacen || "0");
   }, [item.cantidadAlmacen]);
-
-  useEffect(() => {
-    setFechaVal(item.fechaPedido || "");
-  }, [item.fechaPedido]);
 
   useEffect(() => {
     setPartidaCodeVal(item.partidaControlCode || "");
@@ -88,19 +81,6 @@ function EditableAlmacenRow({
     const success = await onSaveAlmacen(item.id, trimmed);
     setIsSavingAlm(false);
     if (success) setIsEditingAlm(false);
-  };
-
-  // Save Fecha Pedido
-  const handleSaveFecha = async () => {
-    const val = fechaVal ? fechaVal.trim() : null;
-    if (val === (item.fechaPedido || null)) {
-      setIsEditingFecha(false);
-      return;
-    }
-    setIsSavingFecha(true);
-    const success = await onSaveField(item.id, { fechaPedido: val });
-    setIsSavingFecha(false);
-    if (success) setIsEditingFecha(false);
   };
 
   // Save Partida Code
@@ -180,42 +160,9 @@ function EditableAlmacenRow({
         {/* Cantidad Solicitada */}
         <td className="px-3 py-2.5 text-right font-extrabold text-nordic">{item.cantidad?.toLocaleString()}</td>
 
-        {/* Fecha Pedido (Editable Date) */}
-        <td className="px-3 py-2.5 text-center min-w-[120px]">
-          {isEditingFecha ? (
-            <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-              <input
-                type="date"
-                value={fechaVal}
-                onChange={(e) => setFechaVal(e.target.value)}
-                onBlur={handleSaveFecha}
-                onKeyDown={(e) => e.key === "Enter" && handleSaveFecha()}
-                disabled={isSavingFecha}
-                autoFocus
-                className="bg-white border border-mosque text-[11px] py-0.5 px-1 rounded outline-none font-bold text-nordic"
-              />
-              {isSavingFecha && (
-                <span className="animate-spin inline-block w-3 h-3 border border-mosque border-t-transparent rounded-full" />
-              )}
-            </div>
-          ) : (
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsEditingFecha(true);
-              }}
-              className="group/cell flex items-center justify-center gap-1 cursor-pointer hover:bg-mosque/5 hover:text-mosque px-2 py-0.5 rounded border border-dashed border-transparent hover:border-mosque/35 transition-all text-nordic text-[11px] font-mono"
-            >
-              <span>{fechaVal || "Asignar Fecha"}</span>
-              <Icon name="calendar_today" className="h-3 w-3 text-nordic/30 group-hover/cell:text-mosque opacity-0 group-hover/cell:opacity-100 transition-all" />
-            </div>
-          )}
-        </td>
-
         {/* En Almacén (Editable Direct or updated by Receipts) */}
         <td className="px-3 py-2.5 text-center min-w-[100px]">
           {numReceipts > 0 ? (
-            // If receipts exist, display calculated sum with link to expand
             <div
               onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
               className="flex items-center justify-center gap-1 font-extrabold text-mosque hover:underline cursor-pointer"
@@ -260,6 +207,9 @@ function EditableAlmacenRow({
             {itemStatus}
           </span>
         </td>
+
+        <td className="px-3 py-2.5 text-right text-nordic/60 font-semibold">{item.cantidadCotizacion || "0"}</td>
+        <td className="px-3 py-2.5 text-right text-nordic/60 font-semibold">{item.cantidadOrdenCompra || "0"}</td>
 
         {/* Partida de Control Code and Description */}
         <td className="px-4 py-2.5 min-w-[200px]">
@@ -352,8 +302,8 @@ function EditableAlmacenRow({
       {/* Expanded Receipts Log Row */}
       {isHistoryExpanded && (
         <tr className="bg-clear-day/30 border-t border-b border-nordic/10 text-xs">
-          <td colSpan={10} className="p-4">
-            <div className="max-w-3xl bg-white border border-nordic/15 rounded-xl shadow-inner p-4 flex flex-col md:flex-row gap-6">
+          <td colSpan={11} className="p-4">
+            <div className="max-w-3xl bg-white border border-nordic/15 rounded-xl shadow-inner p-4 flex flex-col md:flex-row gap-6" onClick={(e) => e.stopPropagation()}>
               {/* Receipt List */}
               <div className="flex-1 space-y-2">
                 <h6 className="font-sf-pro text-[10px] font-bold text-nordic/50 uppercase tracking-wider mb-2">
@@ -464,6 +414,22 @@ export default function MaterialsPanel({
   const [filterWarehouse, setFilterWarehouse] = useState("All");
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
+  // Requisition-level manual date picker states
+  const [editingGroupFecha, setEditingGroupFecha] = useState<string | null>(null);
+  const [tempGroupFecha, setTempGroupFecha] = useState("");
+  const [isSavingGroupFecha, setIsSavingGroupFecha] = useState(false);
+
+  // PDF Viewer / Uploading states
+  const [activePdfUrl, setActivePdfUrl] = useState("");
+  const [activePdfReq, setActivePdfReq] = useState("");
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [uploadingReqCode, setUploadingReqCode] = useState<string | null>(null);
+
+  // File Input Refs
+  const excelInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+
   // 1. Group all items by Requisition Code
   interface GroupedRequest {
     codigoRequerimiento: string;
@@ -524,7 +490,7 @@ export default function MaterialsPanel({
     }
   });
 
-  // Extract unique Partidas for the selector dropdown
+  // Extract unique Partidas for the dropdown filter
   const partidasSet = new Set<string>();
   items.forEach((item) => {
     if (item.partidaControl && item.partidaControl.trim()) {
@@ -535,23 +501,18 @@ export default function MaterialsPanel({
 
   // 2. Filter groups
   const filteredGroups = Object.values(groupedObj).filter((g) => {
-    // Filter by Partida de Control
     if (filterPartida !== "All") {
       const hasPartida = g.items.some((item) => item.partidaControl === filterPartida);
       if (!hasPartida) return false;
     }
 
-    // Filter by Warehouse status
     if (filterWarehouse !== "All" && g.warehouseStatus !== filterWarehouse) {
       return false;
     }
 
-    // Filter by Search Query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      // Match requisition code
       if (g.codigoRequerimiento.toLowerCase().includes(q)) return true;
-      // Or match resource details
       const matchesItem = g.items.some(
         (item) =>
           (item.recurso && item.recurso.toLowerCase().includes(q)) ||
@@ -564,7 +525,7 @@ export default function MaterialsPanel({
     return true;
   });
 
-  // Sort groups numerically by requisition code
+  // Sort groups numerically
   const sortedGroups = filteredGroups.sort((a, b) => {
     const numA = parseInt(a.codigoRequerimiento, 10);
     const numB = parseInt(b.codigoRequerimiento, 10);
@@ -579,6 +540,180 @@ export default function MaterialsPanel({
       ...prev,
       [code]: !prev[code],
     }));
+  };
+
+  // Save manual Requisition Date
+  const handleSaveGroupFecha = async (code: string) => {
+    const originalFecha = groupedObj[code]?.items[0]?.fechaPedido || "";
+    if (tempGroupFecha === originalFecha) {
+      setEditingGroupFecha(null);
+      return;
+    }
+
+    setIsSavingGroupFecha(true);
+    try {
+      const res = await updateRequisitionFechaPedidoAction(code, tempGroupFecha || null);
+      if (res.success) {
+        router.refresh();
+      } else {
+        alert("Error al actualizar la fecha del requerimiento: " + res.error);
+      }
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setIsSavingGroupFecha(false);
+      setEditingGroupFecha(null);
+    }
+  };
+
+  // Open hidden PDF file picker
+  const handlePdfUploadClick = (code: string) => {
+    setUploadingReqCode(code);
+    pdfInputRef.current?.click();
+  };
+
+  // Process uploaded PDF
+  const handlePdfFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadingReqCode) return;
+
+    setIsUploadingPdf(true);
+    try {
+      const base64Data = await convertFileToBase64(file);
+      const res = await uploadRequisitionPdfAction(
+        uploadingReqCode,
+        file.name,
+        base64Data,
+        file.type
+      );
+
+      if (res.success) {
+        alert(`Documento PDF subido exitosamente para el Requerimiento ${uploadingReqCode}.`);
+        router.refresh();
+      } else {
+        alert("Error al cargar PDF: " + res.error);
+      }
+    } catch (err: any) {
+      alert("Error en el servidor: " + err.message);
+    } finally {
+      setIsUploadingPdf(false);
+      setUploadingReqCode(null);
+      e.target.value = ""; // Reset
+    }
+  };
+
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const base64String = (reader.result as string).split(",")[1];
+        resolve(base64String);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  // Open PDF Viewer Modal
+  const handleViewPdf = (url: string, code: string) => {
+    setActivePdfUrl(url);
+    setActivePdfReq(code);
+    setIsPdfModalOpen(true);
+  };
+
+  // Handle Excel Upload
+  const handleExcelUploadClick = () => {
+    excelInputRef.current?.click();
+  };
+
+  const handleExcelFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const filename = file.name;
+    const dotIndex = filename.lastIndexOf(".");
+    const extractedCode = dotIndex !== -1 ? filename.substring(0, dotIndex) : filename;
+
+    // Check if requisition code already exists
+    const exists = !!groupedObj[extractedCode];
+    if (exists) {
+      const confirmOverwrite = confirm(
+        `El requerimiento "${extractedCode}" ya existe.\n¿Está seguro de que desea sobrescribirlo?\nSe conservará la fecha de pedido y el documento PDF cargado previamente.`
+      );
+      if (!confirmOverwrite) {
+        e.target.value = ""; // Reset
+        return;
+      }
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rawData = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1 });
+
+        if (rawData.length <= 1) {
+          alert("El archivo Excel está vacío o no tiene el formato correcto.");
+          e.target.value = "";
+          return;
+        }
+
+        const parsedItems: any[] = [];
+        // Index 0 is header. Start from index 1.
+        for (let i = 1; i < rawData.length; i++) {
+          const row = rawData[i];
+          if (!row || row.length === 0) continue;
+
+          const codigoRecurso = row[2] !== undefined && row[2] !== null ? String(row[2]).trim() : null;
+          const recurso = row[3] !== undefined && row[3] !== null ? String(row[3]).trim() : null;
+          const unidad = row[4] !== undefined && row[4] !== null ? String(row[4]).trim() : "UND";
+          const cantidadVal = row[5];
+          
+          if (!recurso && !codigoRecurso) continue;
+
+          let cantidad = 0;
+          if (typeof cantidadVal === "number") {
+            cantidad = cantidadVal;
+          } else if (cantidadVal) {
+            cantidad = parseFloat(String(cantidadVal)) || 0;
+          }
+
+          const partidaControlCode = row[6] !== undefined && row[6] !== null ? String(row[6]).trim() : null;
+          const partidaControl = row[7] !== undefined && row[7] !== null ? String(row[7]).trim() : null;
+
+          parsedItems.push({
+            codigoRecurso,
+            recurso: recurso || "Insumo sin nombre",
+            unidad,
+            cantidad,
+            partidaControlCode,
+            partidaControl,
+          });
+        }
+
+        if (parsedItems.length === 0) {
+          alert("No se encontraron insumos válidos en el archivo Excel.");
+          e.target.value = "";
+          return;
+        }
+
+        const res = await overwriteMaterialRequisitionAction(extractedCode, parsedItems);
+        if (res.success) {
+          alert(`Requerimiento ${extractedCode} cargado exitosamente con ${parsedItems.length} insumos.`);
+          router.refresh();
+        } else {
+          alert("Error al cargar requerimiento: " + res.error);
+        }
+      } catch (err: any) {
+        alert("Error al leer el archivo Excel: " + err.message);
+      } finally {
+        e.target.value = ""; // Reset
+      }
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   const handleSaveAlmacen = async (id: number, value: string) => {
@@ -669,6 +804,32 @@ export default function MaterialsPanel({
 
   return (
     <div className="w-full space-y-4 font-sf-pro">
+      {/* Hidden File Inputs */}
+      <input
+        type="file"
+        ref={excelInputRef}
+        accept=".xlsx, .xls"
+        className="hidden"
+        onChange={handleExcelFileChange}
+      />
+      <input
+        type="file"
+        ref={pdfInputRef}
+        accept="application/pdf"
+        className="hidden"
+        onChange={handlePdfFileChange}
+      />
+
+      {/* PDF Uploading Overlay */}
+      {isUploadingPdf && (
+        <div className="fixed inset-0 bg-nordic/20 backdrop-blur-xs z-[120] flex items-center justify-center">
+          <div className="bg-white border border-nordic/15 rounded-xl shadow-lg p-4 flex items-center gap-3 font-semibold text-nordic">
+            <span className="animate-spin inline-block w-4 h-4 border-2 border-mosque border-t-transparent rounded-full" />
+            <span>Sincronizando documento PDF con Supabase Storage...</span>
+          </div>
+        </div>
+      )}
+
       {/* Filters Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 border border-nordic/10 rounded-xl shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full lg:w-auto">
@@ -709,14 +870,26 @@ export default function MaterialsPanel({
           </div>
         </div>
 
-        {/* CSV Action Button */}
-        <button
-          onClick={handleExportCSV}
-          className="flex items-center justify-center gap-1.5 text-xs font-bold text-mosque hover:text-mosque/80 hover:underline cursor-pointer outline-none transition-colors border border-mosque/10 px-4 py-2 rounded-lg bg-clear-day/40 w-full lg:w-auto"
-        >
-          <Icon name="download" className="h-4 w-4" />
-          <span>Exportar Resumen CSV</span>
-        </button>
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+          {/* Upload Excel Button */}
+          <button
+            onClick={handleExcelUploadClick}
+            className="flex items-center justify-center gap-1.5 text-xs font-bold text-mosque bg-hint-of-green/45 border border-mosque/20 px-4 py-2 rounded-lg hover:bg-hint-of-green transition-all cursor-pointer outline-none w-full sm:w-auto shadow-sm"
+          >
+            <Icon name="upload_file" className="h-4 w-4" />
+            <span>Cargar Excel Requerimiento</span>
+          </button>
+
+          {/* CSV Export Button */}
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center justify-center gap-1.5 text-xs font-bold text-nordic hover:text-nordic/85 transition-colors border border-nordic/15 px-4 py-2 rounded-lg bg-clear-day/30 w-full sm:w-auto cursor-pointer outline-none"
+          >
+            <Icon name="download" className="h-4 w-4" />
+            <span>Exportar Resumen CSV</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Table Container */}
@@ -765,6 +938,10 @@ export default function MaterialsPanel({
                     groupStatusClass = "bg-amber-50 text-amber-800 border-amber-200";
                   }
 
+                  const firstItem = g.items[0];
+                  const pdfUrl = firstItem?.pdfUrl;
+                  const fechaPedido = firstItem?.fechaPedido;
+
                   return (
                     <React.Fragment key={g.codigoRequerimiento}>
                       <tr
@@ -780,10 +957,79 @@ export default function MaterialsPanel({
                             className="h-5 w-5 text-nordic/40 group-hover:text-mosque transition-colors"
                           />
                         </td>
-                        <td className="px-6 py-4 font-mono text-sm font-extrabold text-nordic group-hover:text-mosque transition-colors">
-                          Req: {g.codigoRequerimiento}
+                        
+                        {/* Requisition Code, Fecha and PDF Metadata Column */}
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1">
+                            <span className="font-mono text-sm font-extrabold text-nordic group-hover:text-mosque transition-colors">
+                              Req: {g.codigoRequerimiento}
+                            </span>
+                            
+                            {/* Requisition-level Fecha Pedido */}
+                            {editingGroupFecha === g.codigoRequerimiento ? (
+                              <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                <span className="text-[10px] font-bold text-nordic/40 uppercase">Fecha:</span>
+                                <input
+                                  type="date"
+                                  value={tempGroupFecha}
+                                  onChange={(e) => setTempGroupFecha(e.target.value)}
+                                  onBlur={() => handleSaveGroupFecha(g.codigoRequerimiento)}
+                                  onKeyDown={(e) => e.key === "Enter" && handleSaveGroupFecha(g.codigoRequerimiento)}
+                                  disabled={isSavingGroupFecha}
+                                  className="bg-white border border-mosque text-[10px] py-0.5 px-1 rounded outline-none font-bold text-nordic"
+                                  autoFocus
+                                />
+                                {isSavingGroupFecha && (
+                                  <span className="animate-spin inline-block w-2.5 h-2.5 border border-mosque border-t-transparent rounded-full" />
+                                )}
+                              </div>
+                            ) : (
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingGroupFecha(g.codigoRequerimiento);
+                                  setTempGroupFecha(fechaPedido || "");
+                                }}
+                                className="group/fecha flex items-center gap-1 text-[10px] text-nordic/45 font-bold hover:text-mosque cursor-pointer w-fit"
+                                title="Editar fecha de pedido del requerimiento"
+                              >
+                                <span>Fecha Pedido: {fechaPedido || "Asignar fecha"}</span>
+                                <Icon name="calendar_today" className="h-3 w-3 text-nordic/30 group-hover/fecha:text-mosque opacity-0 group-hover/fecha:opacity-100 transition-all" />
+                              </div>
+                            )}
+
+                            {/* Requisition-level PDF Actions */}
+                            <div className="flex items-center gap-2 mt-0.5" onClick={(e) => e.stopPropagation()}>
+                              {pdfUrl ? (
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => handleViewPdf(pdfUrl, g.codigoRequerimiento)}
+                                    className="flex items-center gap-0.5 text-[10px] font-extrabold text-red-600 hover:text-red-800 transition-colors cursor-pointer"
+                                  >
+                                    <Icon name="picture_as_pdf" className="h-3.5 w-3.5" />
+                                    <span>Ver PDF</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handlePdfUploadClick(g.codigoRequerimiento)}
+                                    className="text-[9px] font-bold text-nordic/30 hover:text-mosque transition-colors"
+                                    title="Actualizar documento PDF"
+                                  >
+                                    (Actualizar)
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => handlePdfUploadClick(g.codigoRequerimiento)}
+                                  className="flex items-center gap-0.5 text-[9px] font-extrabold text-mosque bg-mosque/5 px-2 py-0.5 border border-mosque/20 rounded hover:bg-mosque/10 transition-all cursor-pointer"
+                                >
+                                  <Icon name="upload_file" className="h-3.5 w-3.5" />
+                                  <span>Subir PDF</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </td>
-                        <td className="px-6 py-4 text-center text-xs font-bold text-nordic/70">
+                        <td className="px-6 py-4 text-center text-xs font-bold text-nordic/70 font-mono">
                           {g.totalItems}
                         </td>
                         <td className="px-6 py-4 text-center">
@@ -814,9 +1060,10 @@ export default function MaterialsPanel({
                                     <th className="px-4 py-2.5">Insumo</th>
                                     <th className="px-3 py-2.5 text-center">Unidad</th>
                                     <th className="px-3 py-2.5 text-right">Cant. Solicitada</th>
-                                    <th className="px-3 py-2.5 text-center">Fecha Pedido</th>
                                     <th className="px-3 py-2.5 text-center">En Almacén</th>
                                     <th className="px-3 py-2.5 text-center">Estado</th>
+                                    <th className="px-3 py-2.5 text-right">Cotización</th>
+                                    <th className="px-3 py-2.5 text-right">O. Compra</th>
                                     <th className="px-4 py-2.5">Partida de Control</th>
                                     <th className="px-4 py-2.5">Cronograma</th>
                                     <th className="px-3 py-2.5 text-center">Entregas</th>
@@ -864,6 +1111,10 @@ export default function MaterialsPanel({
                 groupStatusClass = "bg-amber-50 text-amber-800 border-amber-200";
               }
 
+              const firstItem = g.items[0];
+              const pdfUrl = firstItem?.pdfUrl;
+              const fechaPedido = firstItem?.fechaPedido;
+
               return (
                 <div
                   key={g.codigoRequerimiento}
@@ -871,16 +1122,39 @@ export default function MaterialsPanel({
                 >
                   <div
                     onClick={() => toggleGroup(g.codigoRequerimiento)}
-                    className="flex justify-between items-center cursor-pointer hover:bg-clear-day/10 p-1.5 rounded transition-all"
+                    className="flex justify-between items-start cursor-pointer hover:bg-clear-day/10 p-1.5 rounded transition-all"
                   >
-                    <div className="flex items-center gap-1.5">
-                      <Icon
-                        name={isExpanded ? "expand_more" : "chevron_right"}
-                        className="h-4 w-4 text-nordic/40"
-                      />
-                      <span className="font-mono text-sm font-extrabold text-nordic">
-                        Req: {g.codigoRequerimiento}
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <Icon
+                          name={isExpanded ? "expand_more" : "chevron_right"}
+                          className="h-4 w-4 text-nordic/40"
+                        />
+                        <span className="font-mono text-sm font-extrabold text-nordic">
+                          Req: {g.codigoRequerimiento}
+                        </span>
+                      </div>
+                      
+                      {/* Mobile Fecha Pedido */}
+                      <span className="text-[10px] text-nordic/45 font-bold pl-5 leading-tight">
+                        Fecha: {fechaPedido || "Sin fecha"}
                       </span>
+
+                      {/* Mobile PDF Action */}
+                      {pdfUrl && (
+                        <div className="pl-5 mt-0.5">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewPdf(pdfUrl, g.codigoRequerimiento);
+                            }}
+                            className="flex items-center gap-0.5 text-[9px] font-bold text-red-600 cursor-pointer"
+                          >
+                            <Icon name="picture_as_pdf" className="h-3 w-3" />
+                            <span>Ver PDF</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${groupStatusClass}`}>
                       {g.warehouseStatus}
@@ -939,16 +1213,11 @@ export default function MaterialsPanel({
                                 </div>
                               </div>
 
-                              <div className="text-[9px] text-nordic/50 pt-1.5 border-t border-nordic/5 leading-tight space-y-1">
-                                <div>
-                                  <strong className="text-nordic/70">Fecha Pedido:</strong> {item.fechaPedido || "Sin fecha"}
+                              {item.partidaControl && (
+                                <div className="text-[9px] text-nordic/50 pt-1.5 border-t border-nordic/5 leading-tight">
+                                  <strong className="text-nordic/70">Partida:</strong> {item.partidaControl}
                                 </div>
-                                {item.partidaControl && (
-                                  <div>
-                                    <strong className="text-nordic/70">Partida:</strong> {item.partidaControl}
-                                  </div>
-                                )}
-                              </div>
+                              )}
                             </div>
                           );
                         })}
@@ -961,6 +1230,18 @@ export default function MaterialsPanel({
           )}
         </div>
       </div>
+
+      {/* PDF Viewer Modal */}
+      <PdfViewerModal
+        isOpen={isPdfModalOpen}
+        onClose={() => {
+          setIsPdfModalOpen(false);
+          setActivePdfUrl("");
+          setActivePdfReq("");
+        }}
+        pdfUrl={activePdfUrl}
+        codigoRequerimiento={activePdfReq}
+      />
     </div>
   );
 }
