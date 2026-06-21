@@ -162,18 +162,18 @@ export default function HomeClient({
       />
 
       {/* Main Canvas Area */}
-      <main className="flex-1 ml-0 md:ml-64 p-4 md:p-8 transition-all duration-300">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <main className="flex-1 ml-0 md:ml-64 p-4 md:p-6 transition-all duration-300">
+        <div className="max-w-7xl mx-auto space-y-4">
           {activeTab === "materials" ? (
             /* ==================== MATERIALS SECTION ==================== */
             <>
               {/* Header Title section */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h1 className="font-sf-pro text-2xl md:text-3xl font-extrabold text-nordic tracking-tight">
+                  <h1 className="font-sf-pro text-lg md:text-xl font-extrabold text-slate-800 tracking-tight">
                     Requerimientos de Materiales ASSA
                   </h1>
-                  <p className="text-xs md:text-sm font-semibold text-nordic/60 mt-1">
+                  <p className="text-[11px] font-semibold text-slate-500 mt-0.5">
                     Visualización consolidada de solicitudes de materiales e insumos de obra.
                   </p>
                 </div>
@@ -200,10 +200,10 @@ export default function HomeClient({
               {/* Header Title section */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h1 className="font-sf-pro text-2xl md:text-3xl font-extrabold text-nordic tracking-tight">
+                  <h1 className="font-sf-pro text-lg md:text-xl font-extrabold text-slate-800 tracking-tight">
                     Control de Personal ASSA
                   </h1>
-                  <p className="text-xs md:text-sm font-semibold text-nordic/60 mt-1">
+                  <p className="text-[11px] font-semibold text-slate-500 mt-0.5">
                     Visualice el resumen de personal activo por capataz y gestione la activación de requerimientos pendientes.
                   </p>
                 </div>

@@ -162,60 +162,60 @@ export default function RequirementTable({
 
   return (
     <div className="w-full space-y-5">
-      {/* Sub-Tabs Navigation */}
-      <div className="flex border-b border-nordic/15 shrink-0 bg-white px-2 pt-2 rounded-t-xl overflow-x-auto scrollbar-none">
+      {/* Sub-Tabs Navigation (Excel style tab sheets) */}
+      <div className="flex border-b border-slate-200 shrink-0 bg-slate-100 px-2 pt-1.5 overflow-x-auto scrollbar-none rounded-t-lg">
         {/* Tab 1: Resumen de Personal */}
         <button
           onClick={() => setSubTab("summary")}
-          className={`flex items-center gap-2 px-6 py-3 text-xs md:text-sm font-bold border-b-2 transition-all outline-none cursor-pointer whitespace-nowrap ${
+          className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold transition-all outline-none cursor-pointer border-t border-x border-transparent whitespace-nowrap rounded-t ${
             subTab === "summary"
-              ? "border-mosque text-mosque font-extrabold"
-              : "border-transparent text-nordic/50 hover:text-nordic"
+              ? "bg-white border-slate-200 border-t-2 border-t-mosque text-mosque font-extrabold"
+              : "text-slate-500 hover:bg-slate-200/50 hover:text-slate-700"
           }`}
         >
-          <Icon name="bar_chart" className="h-4.5 w-4.5" />
+          <Icon name="bar_chart" className="h-4 w-4" />
           <span>Resumen de Personal</span>
         </button>
 
         {/* Tab 2: Personal Activo (Flat list) */}
         <button
           onClick={() => setSubTab("personal")}
-          className={`flex items-center gap-2 px-6 py-3 text-xs md:text-sm font-bold border-b-2 transition-all outline-none cursor-pointer whitespace-nowrap ${
+          className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold transition-all outline-none cursor-pointer border-t border-x border-transparent whitespace-nowrap rounded-t ${
             subTab === "personal"
-              ? "border-mosque text-mosque font-extrabold"
-              : "border-transparent text-nordic/50 hover:text-nordic"
+              ? "bg-white border-slate-200 border-t-2 border-t-mosque text-mosque font-extrabold"
+              : "text-slate-500 hover:bg-slate-200/50 hover:text-slate-700"
           }`}
         >
-          <Icon name="group" className="h-4.5 w-4.5" />
+          <Icon name="group" className="h-4 w-4" />
           <span>Personal Activo</span>
         </button>
 
         {/* Tab 3: Requerimientos */}
         <button
           onClick={() => setSubTab("requirements")}
-          className={`flex items-center gap-2 px-6 py-3 text-xs md:text-sm font-bold border-b-2 transition-all outline-none cursor-pointer whitespace-nowrap ${
+          className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold transition-all outline-none cursor-pointer border-t border-x border-transparent whitespace-nowrap rounded-t ${
             subTab === "requirements"
-              ? "border-mosque text-mosque font-extrabold"
-              : "border-transparent text-nordic/50 hover:text-nordic"
+              ? "bg-white border-slate-200 border-t-2 border-t-mosque text-mosque font-extrabold"
+              : "text-slate-500 hover:bg-slate-200/50 hover:text-slate-700"
           }`}
         >
-          <Icon name="assignment_ind" className="h-4.5 w-4.5" />
+          <Icon name="assignment_ind" className="h-4 w-4" />
           <span>Requerimientos</span>
         </button>
       </div>
 
-      {/* Filters Bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 border border-nordic/10 rounded-xl shadow-sm">
+      {/* Filters Bar (Excel toolbar style) */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50 p-2.5 border border-slate-200 rounded">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full lg:w-auto">
           {/* Tramo Filter */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <span className="font-sf-pro text-[10px] font-bold tracking-wider text-nordic/50 uppercase whitespace-nowrap">
+            <span className="font-sf-pro text-[9px] font-bold tracking-wider text-slate-500 uppercase whitespace-nowrap">
               Frente (Tramo):
             </span>
             <select
               value={filterTramo}
               onChange={(e) => setFilterTramo(e.target.value)}
-              className="bg-clear-day border border-nordic/10 text-xs font-bold text-nordic py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-mosque/40 transition-all w-full sm:w-48 cursor-pointer"
+              className="bg-white border border-slate-200 text-xs font-semibold text-slate-800 py-1 pl-2 pr-6 rounded outline-none focus:ring-1 focus:ring-mosque/40 transition-all w-full sm:w-44 cursor-pointer"
             >
               <option value="All">Todos los Frentes</option>
               {existingTramos.map((t) => (
@@ -228,13 +228,13 @@ export default function RequirementTable({
 
           {/* Cargo Filter */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <span className="font-sf-pro text-[10px] font-bold tracking-wider text-nordic/50 uppercase whitespace-nowrap">
+            <span className="font-sf-pro text-[9px] font-bold tracking-wider text-slate-500 uppercase whitespace-nowrap">
               Puesto (Cargo):
             </span>
             <select
               value={filterCargo}
               onChange={(e) => setFilterCargo(e.target.value)}
-              className="bg-clear-day border border-nordic/10 text-xs font-bold text-nordic py-1.5 pl-3 pr-8 rounded-lg outline-none focus:ring-2 focus:ring-mosque/40 transition-all w-full sm:w-48 cursor-pointer"
+              className="bg-white border border-slate-200 text-xs font-semibold text-slate-800 py-1 pl-2 pr-6 rounded outline-none focus:ring-1 focus:ring-mosque/40 transition-all w-full sm:w-44 cursor-pointer"
             >
               <option value="All">Todos los Puestos</option>
               {existingCargos.map((c) => (
@@ -249,9 +249,9 @@ export default function RequirementTable({
         {/* Export Button */}
         <button
           onClick={handleExportCSV}
-          className="flex items-center justify-center gap-1.5 text-xs font-bold text-mosque hover:text-mosque/80 hover:underline cursor-pointer outline-none transition-colors border border-mosque/10 px-4 py-2 rounded-lg bg-clear-day/40 w-full lg:w-auto"
+          className="flex items-center justify-center gap-1.5 text-xs font-bold text-mosque hover:text-mosque/80 hover:underline cursor-pointer outline-none transition-colors border border-mosque/10 px-3 py-1 rounded bg-hint-of-green/20 w-full lg:w-auto"
         >
-          <Icon name="download" className="h-4 w-4" />
+          <Icon name="download" className="h-3.5 w-3.5" />
           <span>Exportar CSV</span>
         </button>
       </div>
@@ -262,57 +262,55 @@ export default function RequirementTable({
           /* ==================== 1. RESUMEN DE PERSONAL TAB ==================== */
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {Object.keys(activeGrouped).length === 0 ? (
-              <div className="col-span-full bg-white border border-nordic/10 p-12 text-center rounded-xl shadow-sm text-nordic/40 font-semibold text-sm">
+              <div className="col-span-full bg-white border border-slate-200 p-12 text-center rounded-xl shadow-sm text-slate-400 font-semibold text-sm">
                 No hay registros de personal activo con los filtros seleccionados.
               </div>
             ) : (
               Object.entries(activeGrouped).map(([tramoName, capataces]) => (
                 <div
                   key={tramoName}
-                  className="bg-white border border-nordic/10 rounded-xl shadow-sm overflow-hidden flex flex-col"
+                  className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm flex flex-col"
                 >
-                  <div className="bg-nordic text-clear-day px-5 py-4 flex items-center justify-between shrink-0">
-                    <div className="flex items-center gap-2">
-                      <Icon name="lan" className="h-5 w-5 text-hint-of-green" />
-                      <h3 className="font-sf-pro font-extrabold text-sm md:text-base tracking-tight text-white">
+                  <div className="bg-nordic text-clear-day px-4 py-2 flex items-center justify-between shrink-0 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <Icon name="lan" className="h-4 w-4 text-hint-of-green" />
+                      <h3 className="font-sf-pro font-extrabold tracking-tight text-white">
                         {tramoName}
                       </h3>
                     </div>
-                    <span className="bg-mosque text-clear-day text-[11px] font-bold px-2.5 py-0.5 rounded-full">
-                      {Object.values(capataces).reduce((a, b) => a + b, 0)} trabajadores
+                    <span className="bg-mosque text-clear-day text-[10px] font-bold px-2.5 py-0.5 rounded-full font-mono">
+                      {Object.values(capataces).reduce((a, b) => a + b, 0)}
                     </span>
                   </div>
 
-                  <div className="divide-y divide-nordic/5 flex-1">
-                    <div className="px-5 py-2.5 bg-clear-day/40 flex justify-between text-[9px] font-extrabold text-nordic/45 uppercase tracking-wider">
-                      <span>Capataz / Encargado</span>
-                      <span>Total Personal</span>
-                    </div>
-
-                    {Object.entries(capataces).map(([capatazName, total]) => (
-                      <button
-                        key={capatazName}
-                        onClick={() => onCapatazClick(capatazName, tramoName)}
-                        className="w-full px-5 py-3.5 flex items-center justify-between text-left hover:bg-clear-day/40 transition-all cursor-pointer group outline-none"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-hint-of-green/40 text-nordic font-extrabold text-xs flex items-center justify-center border border-mosque/10 transition-transform group-hover:scale-105">
-                            {capatazName.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <span className="text-xs md:text-sm font-bold text-nordic group-hover:text-mosque transition-colors">
-                              {capatazName}
-                            </span>
-                            <p className="text-[10px] text-nordic/40 font-bold uppercase tracking-wider mt-0.5">
-                              Haga clic para ver desglose por puesto
-                            </p>
-                          </div>
-                        </div>
-                        <span className="bg-clear-day border border-nordic/15 text-nordic font-extrabold px-3 py-1 rounded-lg text-xs md:text-sm group-hover:bg-mosque group-hover:text-clear-day group-hover:border-mosque transition-all shadow-sm">
-                          {total} {total === 1 ? "persona" : "personas"}
-                        </span>
-                      </button>
-                    ))}
+                  <div className="flex-1 overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                          <th className="border border-slate-200 px-3 py-1.5">Capataz / Encargado</th>
+                          <th className="border border-slate-200 px-3 py-1.5 text-center w-[150px]">Total Personal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-150">
+                        {Object.entries(capataces).map(([capatazName, total]) => (
+                          <tr
+                            key={capatazName}
+                            onClick={() => onCapatazClick(capatazName, tramoName)}
+                            className="hover:bg-slate-50 transition-colors cursor-pointer text-xs font-semibold text-slate-800"
+                          >
+                            <td className="border border-slate-200 px-3 py-1.5 flex items-center gap-2">
+                              <div className="h-5 w-5 rounded bg-emerald-50 text-emerald-800 font-extrabold text-[10px] flex items-center justify-center border border-emerald-200 shrink-0">
+                                {capatazName.slice(0, 2).toUpperCase()}
+                              </div>
+                              <span className="hover:underline">{capatazName}</span>
+                            </td>
+                            <td className="border border-slate-200 px-3 py-1.5 text-center font-mono font-extrabold text-slate-700">
+                              {total}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               ))
@@ -320,66 +318,52 @@ export default function RequirementTable({
           </div>
         ) : subTab === "personal" ? (
           /* ==================== 2. PERSONAL ACTIVO (FLAT TABLE) TAB ==================== */
-          <div className="bg-white border border-nordic/10 rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
             {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse border border-slate-200">
                 <thead>
-                  <tr className="bg-clear-day border-b border-nordic/10">
-                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
-                      Código
-                    </th>
-                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
-                      DNI
-                    </th>
-                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
-                      Apellidos y Nombres
-                    </th>
-                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
-                      Cargo / Puesto
-                    </th>
-                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
-                      Capataz / Encargado
-                    </th>
-                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase">
-                      Frente (Tramo)
-                    </th>
-                    <th className="px-6 py-4 font-sf-pro text-[10px] font-bold tracking-wider text-nordic/60 uppercase text-right">
-                      Fec. Ingreso
-                    </th>
+                  <tr className="bg-slate-100 border-b border-slate-200 text-[10px] font-semibold text-slate-600 uppercase">
+                    <th className="border border-slate-200 px-3 py-2 text-center w-[100px]">Código</th>
+                    <th className="border border-slate-200 px-3 py-2 text-center w-[100px]">DNI</th>
+                    <th className="border border-slate-200 px-3 py-2">Apellidos y Nombres</th>
+                    <th className="border border-slate-200 px-3 py-2 text-center w-[150px]">Cargo / Puesto</th>
+                    <th className="border border-slate-200 px-3 py-2">Capataz / Encargado</th>
+                    <th className="border border-slate-200 px-3 py-2 text-center w-[120px]">Frente (Tramo)</th>
+                    <th className="border border-slate-200 px-3 py-2 text-center w-[120px]">Fec. Ingreso</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-nordic/5">
+                <tbody className="divide-y divide-slate-150 font-semibold text-slate-800 text-xs">
                   {paginatedActiveStaff.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center text-nordic/50 font-semibold">
+                      <td colSpan={7} className="px-3 py-8 text-center text-slate-400 font-semibold">
                         No se encontraron trabajadores activos en esta búsqueda.
                       </td>
                     </tr>
                   ) : (
                     paginatedActiveStaff.map((s) => (
-                      <tr key={s.id} className="hover:bg-clear-day/30 transition-colors">
-                        <td className="px-6 py-4 font-mono text-xs font-semibold text-nordic/85">
+                      <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="border border-slate-200 px-3 py-1 text-center font-mono text-slate-400 text-[11px]">
                           {s.codigo || "-"}
                         </td>
-                        <td className="px-6 py-4 text-xs font-semibold text-nordic/70">
+                        <td className="border border-slate-200 px-3 py-1 text-center font-mono text-slate-600 text-[11px]">
                           {s.dni || "-"}
                         </td>
-                        <td className="px-6 py-4 text-xs font-bold text-nordic">
+                        <td className="border border-slate-200 px-3 py-1 font-bold text-slate-900">
                           {s.nombres}
                         </td>
-                        <td className="px-6 py-4 text-xs text-nordic font-semibold">
-                          <span className="bg-clear-day px-2 py-0.5 rounded text-nordic/85 border border-nordic/10 text-[11px] font-bold">
+                        <td className="border border-slate-200 px-3 py-1 text-center">
+                          <span className="bg-slate-50 px-1.5 py-0.5 rounded text-slate-700 border border-slate-200 text-[10px] font-bold">
                             {s.cargo}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-xs text-nordic/65 font-semibold">
+                        <td className="border border-slate-200 px-3 py-1 text-slate-600">
                           {s.capataz || "-"}
                         </td>
-                        <td className="px-6 py-4 text-xs text-nordic/65 font-semibold font-sf-pro">
+                        <td className="border border-slate-200 px-3 py-1 text-center text-slate-600">
                           {s.tramo}
                         </td>
-                        <td className="px-6 py-4 text-xs text-nordic/60 font-semibold text-right">
+                        <td className="border border-slate-200 px-3 py-1 text-center font-mono text-[11px]">
                           {s.fecing
                             ? new Date(s.fecing).toLocaleDateString("es-ES", {
                                 year: "numeric",
@@ -396,37 +380,37 @@ export default function RequirementTable({
             </div>
 
             {/* Mobile Cards */}
-            <div className="block md:hidden divide-y divide-nordic/5">
+            <div className="block md:hidden divide-y divide-slate-150">
               {paginatedActiveStaff.length === 0 ? (
-                <div className="px-6 py-8 text-center text-nordic/50 font-semibold text-sm">
+                <div className="px-4 py-8 text-center text-slate-400 font-semibold text-xs">
                   No se encontraron trabajadores activos.
                 </div>
               ) : (
                 paginatedActiveStaff.map((s) => (
-                  <div key={s.id} className="p-4 space-y-2 bg-white hover:bg-clear-day/10 transition-colors">
+                  <div key={s.id} className="p-3.5 space-y-1.5 bg-white hover:bg-slate-50 transition-colors">
                     <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-bold text-nordic/80">
+                      <span className="font-mono text-[10px] font-bold text-slate-400">
                         Cód: {s.codigo || "-"}
                       </span>
-                      <span className="text-[11px] text-nordic/50 font-semibold">
+                      <span className="text-[10px] text-slate-400 font-semibold">
                         DNI: {s.dni || "-"}
                       </span>
                     </div>
 
-                    <p className="text-sm font-extrabold text-nordic leading-tight">
+                    <p className="text-xs font-bold text-slate-900 leading-tight">
                       {s.nombres}
                     </p>
 
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      <span className="bg-clear-day px-2 py-0.5 rounded text-nordic border border-nordic/10 text-[10px] font-bold">
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                      <span className="bg-slate-50 px-1.5 py-0.2 rounded text-slate-700 border border-slate-200 text-[9px] font-bold">
                         {s.cargo}
                       </span>
-                      <span className="text-[10px] text-nordic/60 font-semibold">
+                      <span className="text-[10px] text-slate-400 font-semibold">
                         &bull; {s.tramo}
                       </span>
                     </div>
 
-                    <div className="flex justify-between items-center pt-2 border-t border-nordic/5 text-[11px] text-nordic/50">
+                    <div className="flex justify-between items-center pt-1.5 border-t border-slate-100 text-[10px] text-slate-400">
                       <span>Capataz: {s.capataz || "-"}</span>
                       <span>
                         F. Ingreso:{" "}
@@ -445,7 +429,7 @@ export default function RequirementTable({
             </div>
 
             {/* Pagination Controls */}
-            <div className="bg-clear-day px-6 py-4 flex flex-col sm:flex-row items-center justify-between border-t border-nordic/10 text-xs text-nordic/60 font-semibold gap-3">
+            <div className="bg-slate-50 px-6 py-2.5 flex flex-col sm:flex-row items-center justify-between border-t border-slate-200 text-xs text-slate-500 font-semibold gap-3">
               <span>
                 Mostrando {startPersonalItem} a {endPersonalItem} de {totalPersonalCount} trabajadores
               </span>
@@ -453,7 +437,7 @@ export default function RequirementTable({
                 <button
                   disabled={personalPage <= 1}
                   onClick={() => setPersonalPage(personalPage - 1)}
-                  className="p-1 border border-nordic/15 rounded bg-white hover:bg-clear-day transition-colors cursor-pointer text-nordic/50 hover:text-nordic outline-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="p-1 border border-slate-200 rounded bg-white hover:bg-slate-50 transition-colors cursor-pointer text-slate-400 hover:text-slate-700 outline-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Icon name="chevron_left" className="h-4 w-4" />
                 </button>
@@ -467,10 +451,10 @@ export default function RequirementTable({
                         {showEllipsis && <span className="px-1.5 self-end">...</span>}
                         <button
                           onClick={() => setPersonalPage(p)}
-                          className={`px-2.5 py-1 border rounded font-bold text-[11px] outline-none cursor-pointer transition-colors ${
+                          className={`px-2 py-0.5 border rounded font-bold text-[10px] outline-none cursor-pointer transition-colors ${
                             p === personalPage
                               ? "bg-mosque text-clear-day border-mosque"
-                              : "bg-white border-nordic/15 text-nordic/70 hover:bg-clear-day"
+                              : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                           }`}
                         >
                           {p}
@@ -481,7 +465,7 @@ export default function RequirementTable({
                 <button
                   disabled={personalPage >= totalPersonalPages}
                   onClick={() => setPersonalPage(personalPage + 1)}
-                  className="p-1 border border-nordic/15 rounded bg-white hover:bg-clear-day transition-colors cursor-pointer text-nordic/50 hover:text-nordic outline-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="p-1 border border-slate-200 rounded bg-white hover:bg-slate-50 transition-colors cursor-pointer text-slate-400 hover:text-slate-700 outline-none flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Icon name="chevron_right" className="h-4 w-4" />
                 </button>
@@ -492,59 +476,64 @@ export default function RequirementTable({
           /* ==================== 3. REQUERIMIENTOS TAB ==================== */
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {Object.keys(reqGrouped).length === 0 ? (
-              <div className="col-span-full bg-white border border-nordic/10 p-12 text-center rounded-xl shadow-sm text-nordic/40 font-semibold text-sm">
+              <div className="col-span-full bg-white border border-slate-200 p-12 text-center rounded-xl shadow-sm text-slate-400 font-semibold text-sm">
                 No hay solicitudes de requerimientos registradas con los filtros seleccionados.
               </div>
             ) : (
               Object.entries(reqGrouped).map(([tramoName, solicitudes]) => (
                 <div
                   key={tramoName}
-                  className="bg-white border border-nordic/10 rounded-xl shadow-sm overflow-hidden flex flex-col"
+                  className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm flex flex-col"
                 >
-                  <div className="bg-nordic text-clear-day px-5 py-4 flex items-center justify-between shrink-0">
-                    <div className="flex items-center gap-2">
-                      <Icon name="assignment" className="h-5 w-5 text-hint-of-green" />
-                      <h3 className="font-sf-pro font-extrabold text-sm md:text-base tracking-tight text-white">
+                  <div className="bg-nordic text-clear-day px-4 py-2 flex items-center justify-between shrink-0 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <Icon name="assignment" className="h-4 w-4 text-hint-of-green" />
+                      <h3 className="font-sf-pro font-extrabold tracking-tight text-white">
                         {tramoName}
                       </h3>
                     </div>
-                    <span className="bg-mosque text-clear-day text-[11px] font-bold px-2.5 py-0.5 rounded-full">
-                      {Object.keys(solicitudes).length} solicitudes
+                    <span className="bg-mosque text-clear-day text-[10px] font-bold px-2.5 py-0.5 rounded-full font-mono">
+                      {Object.keys(solicitudes).length}
                     </span>
                   </div>
 
-                  <div className="divide-y divide-nordic/5 flex-1">
-                    <div className="px-5 py-2.5 bg-clear-day/40 flex justify-between text-[9px] font-extrabold text-nordic/45 uppercase tracking-wider">
-                      <span>Nro. Solicitud & Capataz</span>
-                      <span>Total Requerido</span>
-                    </div>
-
-                    {Object.values(solicitudes).map((sol) => (
-                      <button
-                        key={sol.solicitud}
-                        onClick={() => onSolicitudClick(sol.solicitud, tramoName)}
-                        className="w-full px-5 py-3.5 flex items-center justify-between text-left hover:bg-clear-day/40 transition-all cursor-pointer group outline-none"
-                      >
-                        <div className="space-y-1">
-                          <span className="font-mono text-xs md:text-sm font-extrabold text-nordic group-hover:text-mosque transition-colors">
-                            {sol.solicitud}
-                          </span>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-nordic/45 font-bold uppercase">
-                              Capataz: {sol.capataz}
-                            </span>
-                            {sol.fechaSolicitud && (
-                              <span className="text-[10px] text-nordic/35 font-bold">
-                                &bull; {new Date(sol.fechaSolicitud).toLocaleDateString("es-ES")}
+                  <div className="flex-1 overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                          <th className="border border-slate-200 px-3 py-1.5 w-[120px]">Nro. Solicitud</th>
+                          <th className="border border-slate-200 px-3 py-1.5">Capataz / Encargado</th>
+                          <th className="border border-slate-200 px-3 py-1.5 text-center w-[120px]">Fecha Solicitud</th>
+                          <th className="border border-slate-200 px-3 py-1.5 text-center w-[130px]">Total Requerido</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-150">
+                        {Object.values(solicitudes).map((sol) => (
+                          <tr
+                            key={sol.solicitud}
+                            onClick={() => onSolicitudClick(sol.solicitud, tramoName)}
+                            className="hover:bg-slate-50 transition-colors cursor-pointer text-xs font-semibold text-slate-800"
+                          >
+                            <td className="border border-slate-200 px-3 py-1.5 font-mono font-bold text-slate-900">
+                              {sol.solicitud}
+                            </td>
+                            <td className="border border-slate-200 px-3 py-1.5 text-slate-700">
+                              {sol.capataz}
+                            </td>
+                            <td className="border border-slate-200 px-3 py-1.5 text-center font-mono text-slate-600 text-[11px]">
+                              {sol.fechaSolicitud
+                                ? new Date(sol.fechaSolicitud).toLocaleDateString("es-ES")
+                                : "-"}
+                            </td>
+                            <td className="border border-slate-200 px-3 py-1.5 text-center font-mono">
+                              <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded font-extrabold">
+                                {sol.totalCount} {sol.totalCount === 1 ? "persona" : "personas"}
                               </span>
-                            )}
-                          </div>
-                        </div>
-                        <span className="bg-clear-day border border-nordic/15 text-nordic font-extrabold px-3 py-1 rounded-lg text-xs md:text-sm group-hover:bg-mosque group-hover:text-clear-day group-hover:border-mosque transition-all shadow-sm">
-                          {sol.totalCount} {sol.totalCount === 1 ? "persona" : "personas"}
-                        </span>
-                      </button>
-                    ))}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               ))

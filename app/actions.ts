@@ -857,7 +857,7 @@ export async function uploadRequisitionPdfAction(
   }
 }
 
-// Overwrite a material requisition's insumos, preserving any existing fecha_pedido or pdf_url
+// Overwrite a material requisition's insumos, preserving any existing fecha_pedido, pdf_url or description
 export async function overwriteMaterialRequisitionAction(
   codigoRequerimiento: string,
   items: Array<{
@@ -880,6 +880,7 @@ export async function overwriteMaterialRequisitionAction(
     // 1. Check if the requisition already exists and fetch its metadata to preserve
     let existingFechaPedido: string | null = null;
     let existingPdfUrl: string | null = null;
+    let existingDescription: string | null = null;
 
     const checkUrl = `${supabaseUrl}/rest/v1/material_requirements?codigo_requerimiento=eq.${codigoRequerimiento}&limit=1`;
     const checkRes = await fetch(checkUrl, {
@@ -896,6 +897,7 @@ export async function overwriteMaterialRequisitionAction(
       if (checkData && checkData.length > 0) {
         existingFechaPedido = checkData[0].fecha_pedido || null;
         existingPdfUrl = checkData[0].pdf_url || null;
+        existingDescription = checkData[0].partida_control || null;
       }
     }
 
@@ -925,8 +927,8 @@ export async function overwriteMaterialRequisitionAction(
       recurso: item.recurso,
       unidad: item.unidad,
       cantidad: item.cantidad,
-      partida_control_code: item.partidaControlCode || null,
-      partida_control: item.partidaControl || null,
+      partida_control_code: null,
+      partida_control: existingDescription,
       fecha_pedido: existingFechaPedido,
       pdf_url: existingPdfUrl,
       estado: "Pendiente",
@@ -958,4 +960,47 @@ export async function overwriteMaterialRequisitionAction(
     return { success: false, error: error.message };
   }
 }
+
+// Update the manual description for all material items in a requisition (stored in partida_control)
+export async function updateRequisitionDescriptionAction(
+  codigoRequerimiento: string,
+  description: string | null
+) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !anonKey) {
+    return { success: false, error: "Supabase credentials are missing." };
+  }
+
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/material_requirements?codigo_requerimiento=eq.${codigoRequerimiento}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": anonKey,
+          "Authorization": `Bearer ${anonKey}`,
+        },
+        body: JSON.stringify({
+          partida_control: description || null,
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("updateRequisitionDescriptionAction PATCH failed:", errText);
+      return { success: false, error: errText };
+    }
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error in updateRequisitionDescriptionAction:", error);
+    return { success: false, error: error.message };
+  }
+}
+
 
