@@ -8,12 +8,16 @@ interface TopBarProps {
   onMenuToggle: () => void;
   onAddClick: () => void;
   searchQuery: string;
+  isSidebarCollapsed?: boolean;
+  showAddButton?: boolean;
 }
 
 export default function TopBar({
   onMenuToggle,
   onAddClick,
   searchQuery,
+  isSidebarCollapsed = false,
+  showAddButton = true,
 }: TopBarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -52,12 +56,13 @@ export default function TopBar({
   };
 
   return (
-    <header className="flex justify-between items-center h-12 ml-0 md:ml-64 px-4 md:px-6 sticky top-0 z-40 bg-white border-b border-slate-200">
+    <header className={`flex justify-between items-center h-12 ml-0 ${isSidebarCollapsed ? "md:ml-16" : "md:ml-64"} px-4 md:px-6 sticky top-0 z-40 bg-white border-b border-slate-200 transition-all duration-300`}>
       {/* Left side: Hamburger & Title */}
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuToggle}
-          className="md:hidden p-1 rounded hover:bg-slate-100 active:scale-95 transition-all outline-none cursor-pointer text-slate-700"
+          className="p-1 rounded hover:bg-slate-100 active:scale-95 transition-all outline-none cursor-pointer text-slate-700"
+          title="Menú lateral"
         >
           <Icon name="menu" className="h-5 w-5" />
         </button>
@@ -70,7 +75,7 @@ export default function TopBar({
       </div>
 
       {/* Right side: Search, Button, Notifications, Avatar */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         {/* Search Input */}
         <div className="relative hidden sm:block">
           <input
@@ -95,21 +100,20 @@ export default function TopBar({
         </div>
 
         {/* Action Button */}
-        <button
-          onClick={onAddClick}
-          className="bg-mosque text-clear-day px-3 py-1.5 text-xs font-bold rounded hover:bg-mosque/90 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer outline-none"
-        >
-          <Icon name="add" className="h-4 w-4 text-clear-day" />
-          <span>Nuevo Requerimiento</span>
-        </button>
-
-        {/* User Profile */}
-        <div className="flex items-center gap-2 border-l border-slate-200 pl-3 md:pl-4">
-          <div className="h-7 w-7 rounded bg-emerald-50 text-emerald-800 font-extrabold text-[10px] flex items-center justify-center border border-emerald-250 select-none shadow-none">
-            PM
-          </div>
-        </div>
+        {showAddButton && (
+          <button
+            onClick={onAddClick}
+            className="bg-mosque text-clear-day px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded hover:bg-mosque/90 active:scale-95 transition-all flex items-center gap-1 cursor-pointer outline-none"
+            title="Nuevo Requerimiento"
+          >
+            <Icon name="add" className="h-4 w-4 text-clear-day" />
+            <span className="hidden sm:inline">Nuevo Requerimiento</span>
+            <span className="inline sm:hidden">Nuevo</span>
+          </button>
+        )}
       </div>
     </header>
   );
 }
+
+

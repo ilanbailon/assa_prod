@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { PersonalAssa } from "./types";
 import Icon from "./Icon";
 
@@ -17,9 +18,34 @@ export default function RequirementTable({
   onCapatazClick,
   onSolicitudClick,
 }: RequirementTableProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [localMobileSearch, setLocalMobileSearch] = useState(searchQuery);
+
   const [subTab, setSubTab] = useState<"summary" | "personal" | "requirements">("summary");
   const [filterTramo, setFilterTramo] = useState("All");
   const [filterCargo, setFilterCargo] = useState("All");
+
+  useEffect(() => {
+    setLocalMobileSearch(searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      if (localMobileSearch !== searchQuery) {
+        const params = new URLSearchParams(searchParams.toString());
+        if (localMobileSearch.trim()) {
+          params.set("search", localMobileSearch.trim());
+        } else {
+          params.delete("search");
+        }
+        params.delete("page");
+        router.push(`${pathname}?${params.toString()}`);
+      }
+    }, 350);
+    return () => clearTimeout(delayDebounce);
+  }, [localMobileSearch, searchQuery, router, pathname, searchParams]);
 
   // Local pagination for the flat Active Personal list (10 items per page)
   const [personalPage, setPersonalPage] = useState(1);
@@ -162,6 +188,29 @@ export default function RequirementTable({
 
   return (
     <div className="w-full space-y-5">
+      {/* Mobile-Only Search Input */}
+      <div className="relative sm:hidden block w-full">
+        <input
+          type="text"
+          placeholder="Buscar personal o requerimientos..."
+          value={localMobileSearch}
+          onChange={(e) => setLocalMobileSearch(e.target.value)}
+          className="w-full bg-white border border-slate-200 px-3.5 py-2 pl-9 rounded-lg text-xs text-slate-800 focus:ring-1 focus:ring-mosque/40 outline-none transition-all placeholder:text-slate-400 font-semibold"
+        />
+        <Icon
+          name="search"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-4 w-4"
+        />
+        {localMobileSearch && (
+          <button
+            onClick={() => setLocalMobileSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer outline-none"
+          >
+            <Icon name="close" className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
       {/* Sub-Tabs Navigation (Excel style tab sheets) */}
       <div className="flex border-b border-slate-200 shrink-0 bg-slate-100 px-2 pt-1.5 overflow-x-auto scrollbar-none rounded-t-lg">
         {/* Tab 1: Resumen de Personal */}
@@ -283,7 +332,8 @@ export default function RequirementTable({
                     </span>
                   </div>
 
-                  <div className="flex-1 overflow-x-auto">
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
                         <tr className="bg-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
@@ -311,6 +361,30 @@ export default function RequirementTable({
                         ))}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Mobile Card List View */}
+                  <div className="block md:hidden divide-y divide-slate-100">
+                    {Object.entries(capataces).map(([capatazName, total]) => (
+                      <div
+                        key={capatazName}
+                        onClick={() => onCapatazClick(capatazName, tramoName)}
+                        className="flex items-center justify-between p-3 active:bg-slate-50 transition-colors cursor-pointer text-xs font-semibold text-slate-800"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-6 w-6 rounded bg-emerald-50 text-emerald-800 font-extrabold text-[9px] flex items-center justify-center border border-emerald-250 shrink-0">
+                            {capatazName.slice(0, 2).toUpperCase()}
+                          </div>
+                          <span className="text-slate-800 font-bold">{capatazName}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-extrabold px-2 py-0.5 rounded-md font-mono">
+                            {total} pers.
+                          </span>
+                          <Icon name="chevron_right" className="h-4 w-4 text-slate-350" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))
@@ -497,7 +571,8 @@ export default function RequirementTable({
                     </span>
                   </div>
 
-                  <div className="flex-1 overflow-x-auto">
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
                         <tr className="bg-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
@@ -534,6 +609,38 @@ export default function RequirementTable({
                         ))}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Mobile Card List View */}
+                  <div className="block md:hidden divide-y divide-slate-100">
+                    {Object.values(solicitudes).map((sol) => (
+                      <div
+                        key={sol.solicitud}
+                        onClick={() => onSolicitudClick(sol.solicitud, tramoName)}
+                        className="flex flex-col p-3 active:bg-slate-50 transition-colors cursor-pointer text-xs space-y-1.5 font-semibold"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs font-extrabold text-slate-900">
+                            Sol: {sol.solicitud}
+                          </span>
+                          <span className="bg-emerald-50 text-emerald-800 border border-emerald-250 text-[9px] font-extrabold px-2 py-0.5 rounded-full font-mono">
+                            {sol.totalCount} pers.
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-slate-500">
+                          <span>Capataz: <strong className="text-slate-700 font-bold">{sol.capataz}</strong></span>
+                          <span>
+                            {sol.fechaSolicitud
+                              ? new Date(sol.fechaSolicitud).toLocaleDateString("es-ES", {
+                                  year: "2-digit",
+                                  month: "2-digit",
+                                  day: "2-digit",
+                                })
+                              : "-"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))

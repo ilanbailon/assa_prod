@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "./components/Sidebar";
 import TopBar from "./components/TopBar";
@@ -10,7 +10,7 @@ import RequirementModal from "./components/RequirementModal";
 import DetailModal from "./components/DetailModal";
 import SolicitudModal from "./components/SolicitudModal";
 import MaterialsPanel from "./components/MaterialsPanel";
-import AddMaterialRequisitionModal from "./components/AddMaterialRequisitionModal";
+import UploadExcelRequisitionModal from "./components/UploadExcelRequisitionModal";
 import { PersonalAssa, MaterialRequirement } from "./components/types";
 import { createPersonalRequirementAction, promoteRequirementAction } from "./actions";
 
@@ -40,10 +40,25 @@ export default function HomeClient({
   cargoCount,
 }: HomeClientProps) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRequirementModalOpen, setIsRequirementModalOpen] = useState(false);
   const [isAddMaterialModalOpen, setIsAddMaterialModalOpen] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar_collapsed");
+    if (saved !== null) {
+      setIsSidebarCollapsed(saved === "true");
+    }
+  }, []);
+
+  const handleToggleSidebarCollapse = () => {
+    const newVal = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newVal);
+    localStorage.setItem("sidebar_collapsed", String(newVal));
+  };
 
   // States for Active Staff Capataz Detail Modal
   const [activeDetailCapataz, setActiveDetailCapataz] = useState<string | null>(null);
@@ -57,9 +72,11 @@ export default function HomeClient({
   const [activeMaterialSolicitud, setActiveMaterialSolicitud] = useState<string | null>(null);
 
   const handleTabChange = (tabId: string) => {
-    const params = new URLSearchParams();
-    params.set("tab", tabId);
-    router.push(`/?${params.toString()}`);
+    startTransition(() => {
+      const params = new URLSearchParams();
+      params.set("tab", tabId);
+      router.push(`/?${params.toString()}`);
+    });
   };
 
   const handleRequirementSubmit = async (data: {
@@ -73,7 +90,9 @@ export default function HomeClient({
     if (!result.success) {
       alert(`Error al guardar el requerimiento: ${result.error}`);
     } else {
-      router.refresh();
+      startTransition(() => {
+        router.refresh();
+      });
     }
   };
 
@@ -92,7 +111,9 @@ export default function HomeClient({
       alert(`Error al activar personal: ${result.error}`);
       throw new Error(result.error);
     } else {
-      router.refresh();
+      startTransition(() => {
+        router.refresh();
+      });
     }
   };
 
@@ -140,29 +161,56 @@ export default function HomeClient({
 
   return (
     <div className="min-h-screen bg-clear-day flex flex-col antialiased">
+      {/* Loading Overlay Spinner for Client Transitions */}
+      {isPending && (
+        <div className="fixed inset-0 bg-clear-day/70 backdrop-blur-xs z-[999] flex flex-col items-center justify-center font-sf-pro animate-in fade-in duration-200">
+          <div className="relative flex flex-col items-center gap-4 p-8 rounded-2xl bg-white border border-slate-200 shadow-xl max-w-sm w-full mx-4">
+            <div className="relative flex items-center justify-center w-16 h-16">
+              <div className="absolute inset-0 border-4 border-mosque/20 border-t-mosque rounded-full animate-spin" />
+              <span className="material-symbols-outlined text-2xl text-mosque animate-pulse select-none">
+                lan
+              </span>
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-sm font-bold text-slate-800 tracking-tight">
+                Control ASSA
+              </h3>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                Cargando información...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar Navigation */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         activeTab={activeTab}
         setActiveTab={handleTabChange}
+        isCollapsed={isSidebarCollapsed}
       />
 
       {/* Top Header Bar */}
       <TopBar
-        onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-        onAddClick={() => {
-          if (activeTab === "materials") {
-            setIsAddMaterialModalOpen(true);
+        onMenuToggle={() => {
+          if (window.innerWidth >= 768) {
+            handleToggleSidebarCollapse();
           } else {
-            setIsRequirementModalOpen(true);
+            setIsSidebarOpen(!isSidebarOpen);
           }
         }}
+        onAddClick={() => {
+          setIsRequirementModalOpen(true);
+        }}
         searchQuery={searchQuery}
+        isSidebarCollapsed={isSidebarCollapsed}
+        showAddButton={activeTab !== "materials"}
       />
 
       {/* Main Canvas Area */}
-      <main className="flex-1 ml-0 md:ml-64 p-4 md:p-6 transition-all duration-300">
+      <main className={`flex-1 ml-0 ${isSidebarCollapsed ? "md:ml-16" : "md:ml-64"} p-4 md:p-6 transition-all duration-300`}>
         <div className="max-w-7xl mx-auto space-y-4">
           {activeTab === "materials" ? (
             /* ==================== MATERIALS SECTION ==================== */
@@ -192,6 +240,7 @@ export default function HomeClient({
               <MaterialsPanel
                 items={materials}
                 searchQuery={searchQuery}
+                onAddClick={() => setIsAddMaterialModalOpen(true)}
               />
             </>
           ) : (
@@ -272,10 +321,11 @@ export default function HomeClient({
         onPromote={handlePromoteRequirement}
       />
 
-      {/* Add Material Requisition Modal */}
-      <AddMaterialRequisitionModal
+      {/* Upload Material Requisition Modal */}
+      <UploadExcelRequisitionModal
         isOpen={isAddMaterialModalOpen}
         onClose={() => setIsAddMaterialModalOpen(false)}
+        onSuccess={() => router.refresh()}
       />
     </div>
   );

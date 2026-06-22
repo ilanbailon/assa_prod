@@ -4,19 +4,18 @@ import React, { useState, useEffect, useRef } from "react";
 import { MaterialRequirement } from "./types";
 import Icon from "./Icon";
 import { useRouter } from "next/navigation";
-import * as XLSX from "xlsx";
 import PdfViewerModal from "./PdfViewerModal";
 import DeliveriesModal from "./DeliveriesModal";
 import EditRequirementModal from "./EditRequirementModal";
 import {
   addMaterialReceiptAction,
   deleteMaterialReceiptAction,
-  overwriteMaterialRequisitionAction,
 } from "../actions";
 
 interface MaterialsPanelProps {
   items: MaterialRequirement[];
   searchQuery: string;
+  onAddClick?: () => void;
 }
 
 // Function to escape regex characters
@@ -160,6 +159,7 @@ function EditableAlmacenRow({
 export default function MaterialsPanel({
   items,
   searchQuery,
+  onAddClick,
 }: MaterialsPanelProps) {
   const router = useRouter();
   const [filterWarehouse, setFilterWarehouse] = useState("All");
@@ -180,9 +180,6 @@ export default function MaterialsPanel({
     pdfUrl: string | null;
     description: string | null;
   } | null>(null);
-
-  // File Input Ref for Excel upload
-  const excelInputRef = useRef<HTMLInputElement>(null);
 
   // 1. Group all items by Requisition Code
   interface GroupedRequest {
@@ -299,95 +296,7 @@ export default function MaterialsPanel({
     setIsPdfModalOpen(true);
   };
 
-  // Handle Excel Upload
-  const handleExcelUploadClick = () => {
-    excelInputRef.current?.click();
-  };
 
-  const handleExcelFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const filename = file.name;
-    const dotIndex = filename.lastIndexOf(".");
-    const extractedCode = dotIndex !== -1 ? filename.substring(0, dotIndex) : filename;
-
-    // Check if requisition code already exists
-    const exists = !!groupedObj[extractedCode];
-    if (exists) {
-      const confirmOverwrite = confirm(
-        `El requerimiento "${extractedCode}" ya existe.\n¿Está seguro de que desea sobrescribirlo?\nSe conservará la fecha de pedido, la descripción y el documento PDF cargado previamente.`
-      );
-      if (!confirmOverwrite) {
-        e.target.value = ""; // Reset
-        return;
-      }
-    }
-
-    const reader = new FileReader();
-    reader.onload = async (evt) => {
-      try {
-        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: "array" });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const rawData = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1 });
-
-        if (rawData.length <= 1) {
-          alert("El archivo Excel está vacío o no tiene el formato correcto.");
-          e.target.value = "";
-          return;
-        }
-
-        const parsedItems: any[] = [];
-        // Index 0 is header. Start from index 1.
-        for (let i = 1; i < rawData.length; i++) {
-          const row = rawData[i];
-          if (!row || row.length === 0) continue;
-
-          const codigoRecurso = row[2] !== undefined && row[2] !== null ? String(row[2]).trim() : null;
-          const recurso = row[3] !== undefined && row[3] !== null ? String(row[3]).trim() : null;
-          const unidad = row[4] !== undefined && row[4] !== null ? String(row[4]).trim() : "UND";
-          const cantidadVal = row[5];
-          
-          if (!recurso && !codigoRecurso) continue;
-
-          let cantidad = 0;
-          if (typeof cantidadVal === "number") {
-            cantidad = cantidadVal;
-          } else if (cantidadVal) {
-            cantidad = parseFloat(String(cantidadVal)) || 0;
-          }
-
-          parsedItems.push({
-            codigoRecurso,
-            recurso: recurso || "Insumo sin nombre",
-            unidad,
-            cantidad,
-          });
-        }
-
-        if (parsedItems.length === 0) {
-          alert("No se encontraron insumos válidos en el archivo Excel.");
-          e.target.value = "";
-          return;
-        }
-
-        const res = await overwriteMaterialRequisitionAction(extractedCode, parsedItems);
-        if (res.success) {
-          alert(`Requerimiento ${extractedCode} cargado exitosamente con ${parsedItems.length} insumos.`);
-          router.refresh();
-        } else {
-          alert("Error al cargar requerimiento: " + res.error);
-        }
-      } catch (err: any) {
-        alert("Error al leer el archivo Excel: " + err.message);
-      } finally {
-        e.target.value = ""; // Reset
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  };
 
   const handleAddReceipt = async (id: number, qty: number, date: string) => {
     try {
@@ -448,14 +357,6 @@ export default function MaterialsPanel({
 
   return (
     <div className="w-full space-y-4 font-sf-pro">
-      {/* Hidden Excel File Input */}
-      <input
-        type="file"
-        ref={excelInputRef}
-        accept=".xlsx, .xls"
-        className="hidden"
-        onChange={handleExcelFileChange}
-      />
 
       {/* Filters Bar (Excel toolbar style) */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50 p-2.5 border border-slate-200 rounded">
@@ -482,7 +383,7 @@ export default function MaterialsPanel({
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
           {/* Upload Excel Button */}
           <button
-            onClick={handleExcelUploadClick}
+            onClick={onAddClick}
             className="flex items-center justify-center gap-1.5 text-xs font-bold text-mosque bg-hint-of-green/20 border border-mosque/10 px-3 py-1 rounded hover:bg-hint-of-green/35 transition-all cursor-pointer outline-none w-full sm:w-auto"
           >
             <Icon name="upload_file" className="h-3.5 w-3.5" />
